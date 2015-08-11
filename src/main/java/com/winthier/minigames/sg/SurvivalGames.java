@@ -256,7 +256,7 @@ public class SurvivalGames extends Game implements Listener {
         if (ticks % 20 == 0 && state != State.INIT && state != State.WAIT_FOR_PLAYERS && state != State.COUNTDOWN) {
             // Update compass targets
             for (Player player : getOnlinePlayers()) {
-                if (getSurvivalPlayer(player).isPlayer()) {
+                if (getSurvivalPlayer(player).isPlayer() && player.getInventory().contains(Material.COMPASS)) {
                     Location playerLoc = player.getLocation();
                     Location loc = world.getSpawnLocation();
                     double dist = Double.MAX_VALUE;

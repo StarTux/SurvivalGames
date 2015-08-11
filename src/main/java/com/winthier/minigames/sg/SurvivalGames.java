@@ -61,6 +61,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
@@ -108,6 +109,7 @@ public class SurvivalGames extends Game implements Listener {
     }
     // const
     final static long RESTOCK_SECONDS = 60;
+    final static long RESTOCK_VARIANCE = 30;
     final static int MIN_PLAYERS = 2; // TODO set higher?
     final static long SUDDEN_DEATH_WITHER_SECONDS = 60;
     final static double SUDDEN_DEATH_RADIUS = 20;
@@ -123,6 +125,7 @@ public class SurvivalGames extends Game implements Listener {
     // map config from crawler
     final List<Location> spawnLocations = new ArrayList<>();
     boolean spawnLocationsRandomized = false;
+    boolean compassesGiven = false;
     int spawnLocationIter = 0;
     final Set<Block> restockChests = new HashSet<>();
     final Map<Block, UUID> landMines = new HashMap<>();
@@ -132,6 +135,8 @@ public class SurvivalGames extends Game implements Listener {
     long ticks;
     long stateTicks;
     long emptyTicks;
+    long restockTicks = 0;
+    int restockPhase = 0;
     String winnerName = null;
     State state = State.INIT;
     // file config
@@ -168,6 +173,7 @@ public class SurvivalGames extends Game implements Listener {
         world.setTime(1000L);
         world.setGameRuleValue("doDaylightCycle", "true");
         world.setGameRuleValue("doTileDrops", "false");
+        world.setGameRuleValue("sendCommandFeedback", "false");
         this.tickTask = new BukkitRunnable() {
             @Override public void run() {
                 onTick();
@@ -279,6 +285,14 @@ public class SurvivalGames extends Game implements Listener {
                     aliveCount++;
                 }
             }
+            if (aliveCount == 2 && !compassesGiven) {
+                compassesGiven = true;
+                for (Player player : getOnlinePlayers()) {
+                    if (getSurvivalPlayer(player).isPlayer()) {
+                        player.getWorld().dropItemNaturally(player.getEyeLocation(), stockItemForKey("SpecialCompass")).setPickupDelay(0);
+                    }
+                }
+            }
             if (aliveCount == 1 && survivor != null && MIN_PLAYERS > 1) {
                 winnerName = getSurvivalPlayer(survivor).getName();
                 getSurvivalPlayer(survivor).setWinner(true);
@@ -355,6 +369,7 @@ public class SurvivalGames extends Game implements Listener {
                     player.playSound(player.getEyeLocation(), Sound.ENDERDRAGON_GROWL, 1f, 1f);
                 }
             }
+            world.setPVP(false);
             break;
         case SUDDEN_DEATH:
             for (Player player : getOnlinePlayers()) {
@@ -362,6 +377,7 @@ public class SurvivalGames extends Game implements Listener {
                     makeMobile(player);
                 }
             }
+            world.setPVP(true);
             break;
         case END:
             for (Player player : getOnlinePlayers()) {
@@ -475,9 +491,13 @@ public class SurvivalGames extends Game implements Listener {
         if (timeLeft % 20L == 0) {
             setSidebarTitle("Fight", timeLeft);
         }
-        if (ticks % (RESTOCK_SECONDS * 20) == 0) {
-            phase = (int)((ticks / 20L) / RESTOCK_SECONDS);
-            restockAllChests(phase);
+        if (restockTicks <= 0) {
+            restockTicks = (RESTOCK_SECONDS + (random.nextLong() % RESTOCK_VARIANCE) - (random.nextLong() % RESTOCK_VARIANCE)) * 20;
+        } else {
+            if (--restockTicks <= 0) {
+                int phase = this.restockPhase++;
+                restockAllChests(phase);
+            }
         }
         if (timeLeft <= 0) return State.COUNTDOWN_SUDDEN_DEATH;
         return null;
@@ -642,6 +662,12 @@ public class SurvivalGames extends Game implements Listener {
         final Player player = event.getPlayer();
         final SurvivalPlayer survivalPlayer = getSurvivalPlayer(player);
         player.setScoreboard(scoreboard);
+        if (survivalPlayer.isSpectator()) {
+            player.setGameMode(GameMode.SPECTATOR);
+            player.setAllowFlight(true);
+            player.setFlying(true);
+            return;
+        }
         switch (state) {
         case INIT:
         case WAIT_FOR_PLAYERS:
@@ -653,11 +679,7 @@ public class SurvivalGames extends Game implements Listener {
         default:
             // Join later and we make sure you are in the right state
             makeMobile(player);
-            if (survivalPlayer.isSpectator()) {
-                player.setGameMode(GameMode.SPECTATOR);
-            } else {
-                player.setGameMode(GameMode.SURVIVAL);
-            }
+            player.setGameMode(GameMode.SURVIVAL);
         }
     }
     
@@ -946,17 +968,29 @@ public class SurvivalGames extends Game implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
+        switch (state) {
+        case INIT:
+        case WAIT_FOR_PLAYERS:
+        case COUNTDOWN:
+            event.setCancelled(true);
+            return;
+        }
         switch (event.getBlock().getType()) {
         case LONG_GRASS:
         case DEAD_BUSH:
         case RED_ROSE:
         case DOUBLE_PLANT:
-            switch (state) {
-            case INIT:
-            case WAIT_FOR_PLAYERS:
-            case COUNTDOWN:
-                break;
-            default:
+            // Allow
+            return;
+        case IRON_PLATE:
+        case GOLD_PLATE:
+        case STONE_PLATE:
+        case WOOD_PLATE:
+            if (landMines.containsKey(event.getBlock())) {
+                event.setCancelled(true);
+                landMines.remove(event.getBlock());
+                event.getBlock().setType(Material.AIR);
+                world.dropItemNaturally(event.getBlock().getLocation().add(0.5, 0.5, 0.5), stockItemForKey("SpecialLandMine"));
                 return;
             }
         }
@@ -1005,22 +1039,15 @@ public class SurvivalGames extends Game implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onEntityExplode(EntityExplodeEvent event) {
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onEntityDeath(EntityDeathEvent event) {
-    }
-
-    @EventHandler(ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent event) {
-        if (getSurvivalPlayer(event.getEntity()).isSpectator()) {
-            event.getEntity().teleport(world.getSpawnLocation());
-            event.getEntity().setGameMode(GameMode.SPECTATOR);
+        final Player player = event.getEntity();
+        if (getSurvivalPlayer(player).isSpectator()) {
+            player.teleport(world.getSpawnLocation());
+            player.setGameMode(GameMode.SPECTATOR);
+            player.setHealth(player.getMaxHealth());
             event.setDeathMessage(null);
             return;
         }
-        final Player player = event.getEntity();
         Players.reset(player);
         player.setScoreboard(scoreboard);
         getSurvivalPlayer(player).setSpectator();
@@ -1031,7 +1058,7 @@ public class SurvivalGames extends Game implements Listener {
         sidebarObjective.getScore(Msg.format("&4%s", player.getName())).setScore(score);
         // Score
         Player killer = player.getKiller();
-        if (killer != null) {
+        if (killer != null && !killer.equals(player)) {
             getSurvivalPlayer(killer).addKills(1);
             sidebarObjective.getScore(killer.getName()).setScore(getSurvivalPlayer(killer).getKills());
         } else {
@@ -1198,7 +1225,7 @@ public class SurvivalGames extends Game implements Listener {
     {
         if (!(event.getEntity() instanceof Player)) return;
         Player damagee = (Player)event.getEntity();
-        if (getSurvivalPlayer(damagee).isPlayer()) return;
+        if (!getSurvivalPlayer(damagee).isPlayer()) return;
         Player damager = null;
         Entity entity = event.getDamager();
         if (entity instanceof Player) {
@@ -1212,6 +1239,20 @@ public class SurvivalGames extends Game implements Listener {
         if (damager == null) return;
         if (!getSurvivalPlayer(damager).isPlayer()) return;
         getSurvivalPlayer(damagee).setLastDamager(damager.getUniqueId());
+    }
+
+    @EventHandler
+    public void onEntityDamage(EntityDamageEvent event)
+    {
+        if (!(event.getEntity() instanceof Player)) return;
+        final Player player = (Player)event.getEntity();
+        if (event.getCause() == EntityDamageEvent.DamageCause.VOID) {
+            event.setCancelled(true);
+            player.teleport(getSurvivalPlayer(player).getSpawnLocation());
+            if (getSurvivalPlayer(player).isPlayer()) {
+                player.setHealth(0);
+            }
+        }
     }
 
     Object button(String chat, String tooltip, String command)
@@ -1233,9 +1274,9 @@ public class SurvivalGames extends Game implements Listener {
     {
         int i = 1;
         Msg.send(player, "&b&lSurvival Games Highscore");
-        Msg.send(player, "&3Rank &fKills &3Name");
+        Msg.send(player, "&3Rank &fGames &4Kills &3Name");
         for (Highscore.Entry entry : entries) {
-            Msg.send(player, "&3#%02d &4%d &3%s", i++, entry.getKills(), entry.getName());
+            Msg.send(player, "&3#%02d &f%02d &4%d &3%s", i++, entry.getCount(), entry.getKills(), entry.getName());
         }
     }
 

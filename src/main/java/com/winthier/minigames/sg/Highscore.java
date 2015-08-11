@@ -11,7 +11,7 @@ import java.util.UUID;
 import lombok.Value;
 
 public class Highscore {
-    @Value class Entry{ String name; int kills; }
+    @Value class Entry{ String name; int count; int kills; }
     
     public void init() {
         System.out.println("Setting up Survival Games highscore");
@@ -60,12 +60,13 @@ public class Highscore {
     List<Entry> list()
     {
         final String sql =
-            "SELECT player_name, SUM(kills) AS kills FROM SurvivalGames GROUP BY player_uuid ORDER BY kills DESC LIMIT 10";
+            "SELECT player_name, COUNT(*) AS count, SUM(kills) AS kills FROM SurvivalGames GROUP BY player_uuid ORDER BY kills DESC LIMIT 10";
         List<Entry> result = new ArrayList<>();
         for (SqlRow row : MinigamesPlugin.getInstance().getDatabase().createSqlQuery(sql).findList()) {
             String name = row.getString("player_name");
+            int count = row.getInteger("count");
             int kills = row.getInteger("kills");
-            result.add(new Entry(name, kills));
+            result.add(new Entry(name, count, kills));
         }
         return result;
     }

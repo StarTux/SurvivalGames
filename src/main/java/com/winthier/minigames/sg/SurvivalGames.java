@@ -1115,6 +1115,7 @@ public class SurvivalGames extends Game implements Listener {
             reduceItemInHand(player);
             if (event instanceof Cancellable) ((Cancellable)event).setCancelled(true);
             Msg.send(player, "&3Your enemies have been revealed!");
+            player.playSound(player.getEyeLocation(), Sound.FIREWORK_LAUNCH, 1f, 1f);
         }
     }
 

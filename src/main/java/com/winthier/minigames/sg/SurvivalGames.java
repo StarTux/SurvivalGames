@@ -431,7 +431,7 @@ public class SurvivalGames extends Game implements Listener {
             int playerCount = 0;
             for (PlayerInfo info : getPlayers()) {
                 playerCount++;
-                if (!info.<SurvivalPlayer>getCustomData(SurvivalPlayer.class).isReady()) {
+                if (!getSurvivalPlayer(info.getUuid()).isReady()) {
                     allReady = false;
                     break;
                 }
@@ -439,13 +439,7 @@ public class SurvivalGames extends Game implements Listener {
             if (allReady && playerCount >= MIN_PLAYERS) return State.COUNTDOWN;
         }
         if (timeLeft <= 0) {
-            // Time runs out
-            boolean allReady = true;
-            int playerCount = 0;
-            for (PlayerInfo info : getPlayers()) {
-                playerCount++;
-            }
-            if (playerCount >= MIN_PLAYERS) return State.COUNTDOWN;
+            if (getOnlinePlayers() >= MIN_PLAYERS) return State.COUNTDOWN;
             // Cancel if there are not at least 2 people
             cancel();
         }

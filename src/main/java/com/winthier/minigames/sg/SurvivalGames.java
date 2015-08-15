@@ -439,7 +439,7 @@ public class SurvivalGames extends Game implements Listener {
             if (allReady && playerCount >= MIN_PLAYERS) return State.COUNTDOWN;
         }
         if (timeLeft <= 0) {
-            if (getOnlinePlayers() >= MIN_PLAYERS) return State.COUNTDOWN;
+            if (getOnlinePlayers().size() >= MIN_PLAYERS) return State.COUNTDOWN;
             // Cancel if there are not at least 2 people
             cancel();
         }
@@ -1269,9 +1269,9 @@ public class SurvivalGames extends Game implements Listener {
     {
         int i = 1;
         Msg.send(player, "&b&lSurvival Games Highscore");
-        Msg.send(player, "&3Rank &fGames &4Kills &3Name");
+        Msg.send(player, "&3Rank &fGames &4Kills &9Wins &3Name");
         for (Highscore.Entry entry : entries) {
-            Msg.send(player, "&3#%02d &f%02d &4%d &3%s", i++, entry.getCount(), entry.getKills(), entry.getName());
+            Msg.send(player, "&3#%02d &f%02d &4%d &9%d &3%s", i++, entry.getCount(), entry.getKills(), entry.getWins(), entry.getName());
         }
     }
 

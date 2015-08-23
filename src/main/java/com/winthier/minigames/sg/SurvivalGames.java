@@ -724,22 +724,17 @@ public class SurvivalGames extends Game implements Listener {
     @Override
     public boolean joinSpectators(List<UUID> uuids)
     {
-        getLogger().info("joinSpectators: " + uuids);
         switch (state) {
         case INIT:
         case WAIT_FOR_PLAYERS:
-            getLogger().info("INIT/WAIT_FOR_PLAYERS: false");
             return false;
         default:
-            getLogger().info("default");
             if (super.joinSpectators(uuids)) {
-                getLogger().info("super.joinSpectators(): true");
                 for (UUID uuid : uuids) {
                     getSurvivalPlayer(uuid).setSpectator();
                 }
                 return true;
             }
-            getLogger().info("super.joinSpectators(): false");
         }
         return false;
     }

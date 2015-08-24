@@ -174,6 +174,9 @@ public class SurvivalGames extends Game implements Listener {
         world.setGameRuleValue("doDaylightCycle", "true");
         world.setGameRuleValue("doTileDrops", "false");
         world.setGameRuleValue("sendCommandFeedback", "false");
+        world.setStorm(false);
+        world.setThundering(false);
+        world.setWeatherDuration(20*60*60);
         this.tickTask = new BukkitRunnable() {
             @Override public void run() {
                 onTick();

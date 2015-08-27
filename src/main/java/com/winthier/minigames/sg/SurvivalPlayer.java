@@ -64,6 +64,7 @@ public class SurvivalPlayer
 
     void recordHighscore()
     {
+        if (sg.debug) return;
         switch (sg.state) {
         case INIT: case WAIT_FOR_PLAYERS: return;
         }

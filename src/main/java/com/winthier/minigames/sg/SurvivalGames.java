@@ -110,12 +110,14 @@ public class SurvivalGames extends Game implements Listener {
     // const
     final static long RESTOCK_SECONDS = 60;
     final static long RESTOCK_VARIANCE = 30;
-    final static int MIN_PLAYERS = 2; // TODO set higher?
     final static long SUDDEN_DEATH_WITHER_SECONDS = 60;
     final static double SUDDEN_DEATH_RADIUS = 20;
     // minigame stuf
     World world;
     BukkitRunnable tickTask;
+    String mapId = "Default";
+    String mapPath = "/home/creative/minecraft/worlds/HungerGames";
+    boolean debug = false;
     // chunk processing
     Set<ChunkCoord> processedChunks = new HashSet<>();
     boolean didSomeoneJoin = false;
@@ -151,11 +153,14 @@ public class SurvivalGames extends Game implements Listener {
     @Override
     public void onEnable() {
         loadConfigFiles();
+        mapId = getConfig().getString("MapID", mapId);
+        mapPath = getConfig().getString("MapPath", mapPath);
+        debug = getConfig().getBoolean("Debug", false);
         WorldLoader.loadWorlds(this, new BukkitFuture<WorldLoader>() {
             @Override public void run() {
                 onWorldsLoaded(get());
             }
-        }, "/home/creative/minecraft/worlds/HungerGames/");
+        }, mapPath);
     }
 
     public void onDisable() {
@@ -186,7 +191,7 @@ public class SurvivalGames extends Game implements Listener {
         MinigamesPlugin.getInstance().getEventManager().registerEvents(this, this);
         setupScoreboard();
         processChunkArea(world.getSpawnLocation().getChunk());
-        highscore.init();
+        if (!debug) highscore.init();
         ready();
     }
 
@@ -235,6 +240,10 @@ public class SurvivalGames extends Game implements Listener {
             }
         }
         //
+    }
+
+    int minPlayers() {
+        return debug ? 1 : 2;
     }
 
     private void onTick() {
@@ -296,7 +305,7 @@ public class SurvivalGames extends Game implements Listener {
                     }
                 }
             }
-            if (aliveCount == 1 && survivor != null && MIN_PLAYERS > 1) {
+            if (aliveCount == 1 && survivor != null && !debug) {
                 winnerName = getSurvivalPlayer(survivor).getName();
                 getSurvivalPlayer(survivor).setWinner(true);
                 getSurvivalPlayer(survivor).setEndTime(new Date());
@@ -439,10 +448,10 @@ public class SurvivalGames extends Game implements Listener {
                     break;
                 }
             }
-            if (allReady && playerCount >= MIN_PLAYERS) return State.COUNTDOWN;
+            if (allReady && playerCount >= minPlayers()) return State.COUNTDOWN;
         }
         if (timeLeft <= 0) {
-            if (getOnlinePlayers().size() >= MIN_PLAYERS) return State.COUNTDOWN;
+            if (getOnlinePlayers().size() >= minPlayers()) return State.COUNTDOWN;
             // Cancel if there are not at least 2 people
             cancel();
         }
@@ -621,9 +630,13 @@ public class SurvivalGames extends Game implements Listener {
         }
         new BukkitRunnable() {
             @Override public void run() {
-                showHighscore(player);
+                if (player.isValid()) {
+                    showHighscore(player);
+                    player.sendMessage("");
+                    showCredits(player);
+                }
             }
-        }.runTaskLater(MinigamesPlugin.getInstance(), 20*3);
+        }.runTaskLater(MinigamesPlugin.getInstance(), 20*5);
     }
 
     SurvivalPlayer getSurvivalPlayer(UUID uuid)
@@ -1277,5 +1290,12 @@ public class SurvivalGames extends Game implements Listener {
     {
         List<Highscore.Entry> entries = highscore.list();
         showHighscore(player, entries);
+    }
+
+    void showCredits(Player player)
+    {
+        StringBuilder sb = new StringBuilder();
+        for (String credit : credits) sb.append(" ").append(credit);
+        Msg.send(player, "&b&l%s&r built by&b%s", mapId, sb.toString());
     }
 }

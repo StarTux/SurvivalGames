@@ -144,6 +144,7 @@ public class SurvivalGames extends Game implements Listener {
     // file config
     final Map<String, ItemStack> stockItems = new HashMap<>();
     final List<List<List<String>>> phaseItems = new ArrayList<>();
+    final List<String> kitItems = new ArrayList<>();
     int phase = 0;
     // Highscore
     final UUID gameUuid = UUID.randomUUID();
@@ -209,6 +210,7 @@ public class SurvivalGames extends Game implements Listener {
             }
         }
         config = getConfigFile("phases");
+        kitItems.addAll(config.getStringList("kit"));
         for (Object o : config.getList("phases")) {
             if (o instanceof List) {
                 // Phase
@@ -350,9 +352,16 @@ public class SurvivalGames extends Game implements Listener {
             for (PlayerInfo info : getPlayers()) {
                 if (!info.isOnline()) {
                     MinigamesPlugin.leavePlayer(info.getUuid());
-                }
-                if (getSurvivalPlayer(info.getUuid()).isPlayer()) {
-                    sidebarObjective.getScore(getSurvivalPlayer(info.getUuid()).getName()).setScore(0);
+                } else {
+                    if (getSurvivalPlayer(info.getUuid()).isPlayer()) {
+                        sidebarObjective.getScore(getSurvivalPlayer(info.getUuid()).getName()).setScore(0);
+                        Player player = info.getPlayer();
+                        if (player != null) {
+                            for (String key : kitItems) {
+                                player.getInventory().addItem(stockItemForKey(key));
+                            }
+                        }
+                    }
                 }
             }
             break;
@@ -1269,7 +1278,7 @@ public class SurvivalGames extends Game implements Listener {
         map.put("clickEvent", map2);
         map2.put("action", "run_command");
         map2.put("value", command);
-        map2 = new HashMap();
+        map2 = new HashMap<>();
         map.put("hoverEvent", map2);
         map2.put("action", "show_text");
         map2.put("value", Msg.format(tooltip));

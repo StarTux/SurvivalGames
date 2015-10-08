@@ -391,6 +391,7 @@ public class SurvivalGames extends Game implements Listener {
                 }
             }
             world.setPVP(false);
+            world.setTime(0);
             break;
         case SUDDEN_DEATH:
             for (Player player : getOnlinePlayers()) {
@@ -1265,8 +1266,11 @@ public class SurvivalGames extends Game implements Listener {
             event.setCancelled(true);
             player.teleport(getSurvivalPlayer(player).getSpawnLocation());
             if (getSurvivalPlayer(player).isPlayer()) {
+                Players.reset(player);
                 player.setHealth(0);
             }
+        } else if (event.getCause() == EntityDamageEvent.DamageCause.LAVA) {
+            event.setCancelled(true);
         }
     }
 

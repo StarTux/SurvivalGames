@@ -60,7 +60,7 @@ public class Highscore {
     List<Entry> list()
     {
         final String sql =
-            "SELECT player_name, COUNT(*) AS count, SUM(kills) AS kills, SUM(winner) AS wins FROM SurvivalGames GROUP BY player_uuid ORDER BY kills DESC LIMIT 10";
+            "SELECT player_name, COUNT(*) AS count, SUM(kills) AS kills, SUM(winner) AS wins FROM SurvivalGames GROUP BY player_uuid ORDER BY wins DESC, kills DESC, count DESC LIMIT 10";
         List<Entry> result = new ArrayList<>();
         for (SqlRow row : MinigamesPlugin.getInstance().getDatabase().createSqlQuery(sql).findList()) {
             String name = row.getString("player_name");

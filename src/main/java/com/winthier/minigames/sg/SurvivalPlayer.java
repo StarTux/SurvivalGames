@@ -1,9 +1,11 @@
 package com.winthier.minigames.sg;
 
+import com.winthier.reward.RewardBuilder;
 import java.util.Date;
 import java.util.UUID;
 import lombok.Data;
 import org.bukkit.Location;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 @Data
@@ -24,6 +26,7 @@ public class SurvivalPlayer
     boolean winner = false;
     boolean highscoreRecorded = false;
     boolean didPlay = false;
+    boolean rewarded = false;
 
     public SurvivalPlayer(SurvivalGames game, UUID uuid)
     {
@@ -73,5 +76,17 @@ public class SurvivalPlayer
         sg.highscore.store(sg.gameUuid, uuid, name, startTime, endTime, kills, winner);
         sg.getLogger().info("Stored highscore of " + name);
         highscoreRecorded = true;
+        if (!rewarded) {
+            rewarded = true;
+            RewardBuilder reward = RewardBuilder.create().uuid(uuid).name(name);
+            reward.comment(String.format("Game of Survival Games %s with %d kills.", (winner ? "won" : "played"), kills));
+            ConfigurationSection config = sg.getConfigFile("rewards");
+            for (int i = 0; i < kills; ++i) reward.config(config.getConfigurationSection("kill"));
+            for (int i = 0; i <= kills; ++i) reward.config(config.getConfigurationSection("" + i + "kills"));
+            if (winner) {
+                reward.config(config.getConfigurationSection("win"));
+            }
+            reward.store();
+        }
     }
 }

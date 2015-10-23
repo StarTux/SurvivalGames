@@ -605,9 +605,7 @@ public class SurvivalGames extends Game implements Listener {
     {
         phase = Math.min(phase, phaseItems.size() - 1);
         List<List<String>> cacheList = new ArrayList<>();
-        for (int i = 0; i <= phase; ++i) {
-            cacheList.addAll(phaseItems.get(i));
-        }
+        cacheList.addAll(phaseItems.get(Math.min(phase, phaseItems.size() - 1)));
         List<ItemStack> result = new ArrayList<>();
         int i = random.nextInt(cacheList.size());
         List<String> list = cacheList.get(i);
@@ -1185,15 +1183,10 @@ public class SurvivalGames extends Game implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onPlayerPickupItem(PlayerPickupItemEvent event) {
-    }
-
-    @EventHandler(ignoreCancelled = true)
     public void onPlayerLeave(PlayerLeaveEvent event) {
-        if (getSurvivalPlayer(event.getPlayer()) == null) {
-            getSurvivalPlayer(event.getPlayer()).setEndTime(new Date());
-        }
-        getSurvivalPlayer(event.getPlayer()).recordHighscore();
+        UUID uuid = event.getUuid();
+        getSurvivalPlayer(uuid).setEndTime(new Date());
+        getSurvivalPlayer(uuid).recordHighscore();
     }
 
     @EventHandler(ignoreCancelled = true)

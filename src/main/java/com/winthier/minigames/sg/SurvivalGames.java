@@ -825,6 +825,29 @@ public class SurvivalGames extends Game implements Listener {
                         location.setDirection(lookAt);
                         spawnLocations.add(location);
                         state.getBlock().setType(Material.AIR);
+                    } else if (firstLine.equals("[time]")) {
+                        long time = 0;
+                        String arg = sign.getLine(1).toLowerCase();
+                        if ("day".equals(arg)) {
+                            time = 1000;
+                        } else if ("night".equals(arg)) {
+                            time = 13000;
+                        } else if ("noon".equals(arg)) {
+                            time = 6000;
+                        } else if ("midnight".equals(arg)) {
+                            time = 18000;
+                        } else {
+                            try {
+                                time = Long.parseLong(sign.getLine(1));
+                            } catch (NumberFormatException nfe) {}
+                        }
+                        world.setTime(time);
+                        if ("lock".equalsIgnoreCase(sign.getLine(2))) {
+                            world.setGameRuleValue("doDaylightCycle", "false");
+                        } else {
+                            world.setGameRuleValue("doDaylightCycle", "true");
+                        }
+                        state.getBlock().setType(Material.AIR);
                     }
                 }
             }

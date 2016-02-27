@@ -98,7 +98,7 @@ public class SurvivalGames extends Game implements Listener {
         WAIT_FOR_PLAYERS(60),
         COUNTDOWN(5),
         LOOTING(45),
-        FREE_FOR_ALL(60*10),
+        FREE_FOR_ALL(60*5),
         COUNTDOWN_SUDDEN_DEATH(10),
         SUDDEN_DEATH,
         END(60),

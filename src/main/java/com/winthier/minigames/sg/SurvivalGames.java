@@ -1203,6 +1203,16 @@ public class SurvivalGames extends Game implements Listener {
             event.getRightClicked().setFireTicks(event.getRightClicked().getFireTicks() + 20*20);
             event.setCancelled(true);
         }
+        switch (event.getRightClicked().getType()) {
+        case ITEM_FRAME: case ARMOR_STAND: event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) {
+        switch (event.getRightClicked().getType()) {
+        case ITEM_FRAME: case ARMOR_STAND: event.setCancelled(true);
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -1255,6 +1265,11 @@ public class SurvivalGames extends Game implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event)
     {
+        switch (event.getEntity().getType()) {
+        case ITEM_FRAME: case ARMOR_STAND:
+            event.setCancelled(true);
+            return;
+        }
         if (!(event.getEntity() instanceof Player)) return;
         Player damagee = (Player)event.getEntity();
         if (!getSurvivalPlayer(damagee).isPlayer()) return;

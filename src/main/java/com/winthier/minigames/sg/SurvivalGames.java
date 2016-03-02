@@ -379,7 +379,7 @@ public class SurvivalGames extends Game implements Listener {
             for (Player player : getOnlinePlayers()) {
                 Title.show(player, "", "&cFight!");
                 Msg.send(player, "&cFight!");
-                player.playSound(player.getEyeLocation(), Sound.WITHER_SPAWN, 1f, 1f);
+                player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 1f, 1f);
             }
             world.setPVP(true);
             break;
@@ -387,7 +387,7 @@ public class SurvivalGames extends Game implements Listener {
             for (Player player : getOnlinePlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     makeImmobile(player, getSurvivalPlayer(player).getSpawnLocation());
-                    player.playSound(player.getEyeLocation(), Sound.ENDERDRAGON_GROWL, 1f, 1f);
+                    player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDERDRAGON_GROWL, 1f, 1f);
                 }
             }
             world.setPVP(false);
@@ -403,7 +403,7 @@ public class SurvivalGames extends Game implements Listener {
             break;
         case END:
             for (Player player : getOnlinePlayers()) {
-                player.playSound(player.getEyeLocation(), Sound.ENDERDRAGON_DEATH, 1f, 1f);
+                player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDERDRAGON_DEATH, 1f, 1f);
             }
         }
     }
@@ -478,7 +478,7 @@ public class SurvivalGames extends Game implements Listener {
                 if (seconds == 0) {
                     Title.show(player, "&a&lGO!", "");
                     Msg.send(player, "&bGO!");
-                    player.playSound(player.getEyeLocation(), Sound.FIREWORK_LARGE_BLAST, 1f, 1f);
+                    player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_LARGE_BLAST, 1f, 1f);
                 } else if (seconds == state.seconds) {
                     Title.show(player, "&aGet Ready!", "&aGame starts in " + state.seconds + " seconds");
                     Msg.send(player, "&bGame starts in %d seconds", seconds);
@@ -955,7 +955,7 @@ public class SurvivalGames extends Game implements Listener {
             @Override public void run() {
                 for (Player player : getOnlinePlayers()) {
                     Title.show(player, "", "&3Chests restocked");
-                    player.playSound(player.getEyeLocation(), Sound.LEVEL_UP, 1f, 1f);
+                    player.playSound(player.getEyeLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
                 }
             }
         }.runTaskLater(MinigamesPlugin.getInstance(), 20*3);
@@ -1151,7 +1151,7 @@ public class SurvivalGames extends Game implements Listener {
             reduceItemInHand(player);
             if (event instanceof Cancellable) ((Cancellable)event).setCancelled(true);
             Msg.send(player, "&3Your enemies have been revealed!");
-            player.playSound(player.getEyeLocation(), Sound.FIREWORK_LAUNCH, 1f, 1f);
+            player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_LAUNCH, 1f, 1f);
         }
     }
 

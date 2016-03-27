@@ -141,6 +141,7 @@ public class SurvivalGames extends Game implements Listener {
     int restockPhase = 0;
     String winnerName = null;
     State state = State.INIT;
+    final List<String> debugMessages = new ArrayList<>();
     // file config
     final Map<String, ItemStack> stockItems = new HashMap<>();
     final List<List<List<String>>> phaseItems = new ArrayList<>();
@@ -645,6 +646,11 @@ public class SurvivalGames extends Game implements Listener {
                 }
             }
         }.runTaskLater(MinigamesPlugin.getInstance(), 20*5);
+        if (debug) {
+            for (String debugMessage: debugMessages) {
+                Msg.send(player, "&c&lDEBUG&r %s", debugMessage);
+            }
+        }
     }
 
     SurvivalPlayer getSurvivalPlayer(UUID uuid)
@@ -818,6 +824,7 @@ public class SurvivalGames extends Game implements Listener {
                             if (credit != null) credits.add(credit);
                         }
                         state.getBlock().setType(Material.AIR);
+                        debugMessages.add("Credits sign at "+state.getX()+","+state.getY()+","+state.getZ());
                     } else if (firstLine.equals("[spawn]")) {
                         Location location = state.getBlock().getLocation();
                         location.add(0.5, 0.5, 0.5);

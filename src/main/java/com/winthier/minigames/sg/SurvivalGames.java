@@ -1188,6 +1188,11 @@ public class SurvivalGames extends Game implements Listener {
         switch (event.getAction()) {
         case RIGHT_CLICK_AIR:
         case RIGHT_CLICK_BLOCK:
+            if (event.hasBlock() &&
+                state != State.LOOTING &&
+                state != State.FREE_FOR_ALL) {
+                event.setCancelled(true);
+            }
             onUse(event.getPlayer(), event);
             break;
         case PHYSICAL:

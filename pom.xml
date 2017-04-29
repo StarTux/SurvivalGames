@@ -29,7 +29,7 @@
     <dependency>
       <groupId>org.spigotmc</groupId>
       <artifactId>spigot-api</artifactId>
-      <version>1.11-R0.1-SNAPSHOT</version>
+      <version>1.11.2-R0.1-SNAPSHOT</version>
     </dependency>
     <!-- Lombok -->
     <dependency>
@@ -49,6 +49,20 @@
     <dependency>
       <groupId>com.winthier.reward</groupId>
       <artifactId>reward</artifactId>
+      <version>0.1</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- Custom -->
+    <dependency>
+      <groupId>com.winthier.custom</groupId>
+      <artifactId>custom</artifactId>
+      <version>0.1</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- GenericEvents -->
+    <dependency>
+      <groupId>com.winthier.generic_events</groupId>
+      <artifactId>generic_events</artifactId>
       <version>0.1</version>
       <scope>provided</scope>
     </dependency>

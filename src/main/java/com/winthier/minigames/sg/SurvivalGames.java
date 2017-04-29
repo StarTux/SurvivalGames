@@ -1,5 +1,7 @@
 package com.winthier.minigames.sg;
 
+import com.winthier.custom.CustomPlugin;
+import com.winthier.generic_events.PlayerCanDamageEntityEvent;
 import com.winthier.minigames.MinigamesPlugin;
 import com.winthier.minigames.event.player.PlayerLeaveEvent;
 import com.winthier.minigames.game.Game;
@@ -598,8 +600,13 @@ public class SurvivalGames extends Game implements Listener {
     ItemStack stockItemForKey(String key)
     {
         ItemStack result = stockItems.get(key);
-        if (result == null) result = new ItemStack(Material.STONE);
-        return result.clone();
+        if (result != null) return result.clone();
+        try {
+            return CustomPlugin.getInstance().getItemManager().spawnItemStack(key, 1);
+        } catch (IllegalArgumentException iae) {
+            iae.printStackTrace();
+        }
+        return new ItemStack(Material.STONE);
     }
 
     List<ItemStack> stockItemForPhase(int phase)
@@ -1298,6 +1305,17 @@ public class SurvivalGames extends Game implements Listener {
         if (damager == null) return;
         if (!getSurvivalPlayer(damager).isPlayer()) return;
         getSurvivalPlayer(damagee).setLastDamager(damager.getUniqueId());
+    }
+
+    @EventHandler
+    public void onPlayerCanDamageEntity(PlayerCanDamageEntityEvent event) {
+        switch (state) {
+        case FREE_FOR_ALL:
+        case SUDDEN_DEATH:
+            return;
+        default:
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

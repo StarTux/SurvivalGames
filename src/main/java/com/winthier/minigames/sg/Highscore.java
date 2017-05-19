@@ -1,8 +1,8 @@
 package com.winthier.minigames.sg;
 
-import com.avaje.ebean.SqlRow;
-import com.avaje.ebean.SqlUpdate;
 import com.winthier.minigames.MinigamesPlugin;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -12,7 +12,7 @@ import lombok.Value;
 
 public class Highscore {
     @Value class Entry{ String name; int count; int kills; int wins; }
-    
+
     public void init() {
         System.out.println("Setting up Survival Games highscore");
         final String sql =
@@ -28,7 +28,7 @@ public class Highscore {
             " PRIMARY KEY (`id`)" +
             ")";
         try {
-            MinigamesPlugin.getInstance().getDatabase().createSqlUpdate(sql).execute();
+            MinigamesPlugin.getInstance().getDb().executeUpdate(sql);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -40,34 +40,36 @@ public class Highscore {
             "INSERT INTO `SurvivalGames` (" +
             " `game_uuid`, `player_uuid`, `player_name`, `start_time`, `end_time`, `kills`, `winner`" +
             ") VALUES (" +
-            " :gameUuid, :playerUuid, :playerName, :startTime, :endTime, :kills, :winner" +
+            " ?, ?, ?, ?, ?, ?, ?" +
             ")";
-        try {
-            SqlUpdate update = MinigamesPlugin.getInstance().getDatabase().createSqlUpdate(sql);
-            update.setParameter("gameUuid", gameUuid);
-            update.setParameter("playerUuid", playerUuid);
-            update.setParameter("playerName", playerName);
-            update.setParameter("startTime", startTime);
-            update.setParameter("endTime", endTime);
-            update.setParameter("kills", kills);
-            update.setParameter("winner", winner);
+        try (PreparedStatement update = MinigamesPlugin.getInstance().getDb().getConnection().prepareStatement(sql)) {
+            update.setString(1, gameUuid.toString());
+            update.setString(2, playerUuid.toString());
+            update.setString(3, playerName);
+            update.setTimestamp(4, new java.sql.Timestamp(startTime.getTime()));
+            update.setTimestamp(5, new java.sql.Timestamp(endTime.getTime()));
+            update.setInt(6, kills);
+            update.setBoolean(7, winner);
             update.execute();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    List<Entry> list()
-    {
+    List<Entry> list() {
         final String sql =
             "SELECT player_name, COUNT(*) AS count, SUM(kills) AS kills, SUM(winner) AS wins FROM SurvivalGames GROUP BY player_uuid ORDER BY wins DESC, kills DESC, count DESC LIMIT 10";
         List<Entry> result = new ArrayList<>();
-        for (SqlRow row : MinigamesPlugin.getInstance().getDatabase().createSqlQuery(sql).findList()) {
-            String name = row.getString("player_name");
-            int count = row.getInteger("count");
-            int kills = row.getInteger("kills");
-            int wins = row.getInteger("wins");
-            result.add(new Entry(name, count, kills, wins));
+        try (ResultSet row = MinigamesPlugin.getInstance().getDb().executeQuery(sql)) {
+            while (row.next()) {
+                String name = row.getString("player_name");
+                int count = row.getInt("count");
+                int kills = row.getInt("kills");
+                int wins = row.getInt("wins");
+                result.add(new Entry(name, count, kills, wins));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return result;
     }

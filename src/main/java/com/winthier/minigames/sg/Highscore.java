@@ -1,6 +1,5 @@
 package com.winthier.minigames.sg;
 
-import com.winthier.minigames.MinigamesPlugin;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -10,8 +9,13 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.Value;
 
-public class Highscore {
+final class Highscore {
+    private final SurvivalGames plugin;
     @Value class Entry{ String name; int count; int kills; int wins; }
+
+    Highscore(SurvivalGames plugin) {
+        this.plugin = plugin;
+    }
 
     public void init() {
         System.out.println("Setting up Survival Games highscore");
@@ -28,22 +32,22 @@ public class Highscore {
             " PRIMARY KEY (`id`)" +
             ")";
         try {
-            MinigamesPlugin.getInstance().getDb().executeUpdate(sql);
+            plugin.db.executeUpdate(sql);
         } catch (Exception e) {
             e.printStackTrace();
         }
         System.out.println("Done setting up Survival Games highscore");
     }
 
-    public void store(UUID gameUuid, UUID playerUuid, String playerName, Date startTime, Date endTime, int kills, boolean winner) {
+    public void store(UUID gameId, UUID playerUuid, String playerName, Date startTime, Date endTime, int kills, boolean winner) {
         final String sql =
             "INSERT INTO `SurvivalGames` (" +
             " `game_uuid`, `player_uuid`, `player_name`, `start_time`, `end_time`, `kills`, `winner`" +
             ") VALUES (" +
             " ?, ?, ?, ?, ?, ?, ?" +
             ")";
-        try (PreparedStatement update = MinigamesPlugin.getInstance().getDb().getConnection().prepareStatement(sql)) {
-            update.setString(1, gameUuid.toString());
+        try (PreparedStatement update = plugin.db.getConnection().prepareStatement(sql)) {
+            update.setString(1, gameId.toString());
             update.setString(2, playerUuid.toString());
             update.setString(3, playerName);
             update.setTimestamp(4, new java.sql.Timestamp(startTime.getTime()));
@@ -60,7 +64,7 @@ public class Highscore {
         final String sql =
             "SELECT player_name, COUNT(*) AS count, SUM(kills) AS kills, SUM(winner) AS wins FROM SurvivalGames GROUP BY player_uuid ORDER BY wins DESC, kills DESC, count DESC LIMIT 10";
         List<Entry> result = new ArrayList<>();
-        try (ResultSet row = MinigamesPlugin.getInstance().getDb().executeQuery(sql)) {
+        try (ResultSet row = plugin.db.executeQuery(sql)) {
             while (row.next()) {
                 String name = row.getString("player_name");
                 int count = row.getInt("count");

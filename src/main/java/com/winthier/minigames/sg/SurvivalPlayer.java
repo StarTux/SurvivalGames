@@ -1,6 +1,5 @@
 package com.winthier.minigames.sg;
 
-import com.winthier.reward.RewardBuilder;
 import java.util.Date;
 import java.util.UUID;
 import lombok.Data;
@@ -26,7 +25,7 @@ public class SurvivalPlayer
     boolean winner = false;
     boolean highscoreRecorded = false;
     boolean didPlay = false;
-    boolean rewarded = false;
+    boolean hasJoinedBefore = false;
 
     public SurvivalPlayer(SurvivalGames game, UUID uuid)
     {
@@ -73,20 +72,16 @@ public class SurvivalPlayer
         }
         if (!didPlay) return;
         if (highscoreRecorded) return;
-        sg.highscore.store(sg.gameUuid, uuid, name, startTime, endTime, kills, winner);
+        sg.highscore.store(sg.gameId, uuid, name, startTime, endTime, kills, winner);
         sg.getLogger().info("Stored highscore of " + name);
         highscoreRecorded = true;
-        if (!rewarded) {
-            rewarded = true;
-            RewardBuilder reward = RewardBuilder.create().uuid(uuid).name(name);
-            reward.comment(String.format("Game of Survival Games %s with %d kills.", (winner ? "won" : "played"), kills));
-            ConfigurationSection config = sg.getConfigFile("rewards");
-            for (int i = 0; i < kills; ++i) reward.config(config.getConfigurationSection("kill"));
-            for (int i = 0; i <= kills; ++i) reward.config(config.getConfigurationSection("" + i + "kills"));
-            if (winner) {
-                reward.config(config.getConfigurationSection("win"));
-            }
-            reward.store();
-        }
+    }
+
+    Player getPlayer() {
+        return sg.getServer().getPlayer(uuid);
+    }
+
+    boolean isOnline() {
+        return getPlayer() != null;
     }
 }

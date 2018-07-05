@@ -1,16 +1,13 @@
 package com.winthier.minigames.sg;
 
+import com.winthier.connect.Connect;
+import com.winthier.connect.Message;
+import com.winthier.connect.bukkit.event.ConnectMessageEvent;
 import com.winthier.custom.CustomPlugin;
 import com.winthier.generic_events.PlayerCanDamageEntityEvent;
-import com.winthier.minigames.MinigamesPlugin;
-import com.winthier.minigames.event.player.PlayerLeaveEvent;
-import com.winthier.minigames.game.Game;
-import com.winthier.minigames.player.PlayerInfo;
-import com.winthier.minigames.util.BukkitFuture;
-import com.winthier.minigames.util.Msg;
-import com.winthier.minigames.util.Players;
-import com.winthier.minigames.util.Title;
-import com.winthier.minigames.util.WorldLoader;
+import com.winthier.sql.SQLDatabase;
+import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -36,12 +33,17 @@ import org.bukkit.Note;
 import org.bukkit.SkullType;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.WorldCreator;
+import org.bukkit.WorldType;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
 import org.bukkit.block.Skull;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
@@ -85,6 +87,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -92,8 +95,10 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.util.Vector;
+import org.json.simple.JSONValue;
+import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
-public class SurvivalGames extends Game implements Listener {
+public class SurvivalGames extends JavaPlugin implements Listener {
     @Value class ChunkCoord { int x, z; }
     static enum State {
         INIT,
@@ -118,7 +123,6 @@ public class SurvivalGames extends Game implements Listener {
     World world;
     BukkitRunnable tickTask;
     String mapId = "Default";
-    String mapPath = "/home/creative/minecraft/worlds/HungerGames";
     boolean debug = false;
     // chunk processing
     Set<ChunkCoord> processedChunks = new HashSet<>();
@@ -150,33 +154,43 @@ public class SurvivalGames extends Game implements Listener {
     final List<String> kitItems = new ArrayList<>();
     int phase = 0;
     // Highscore
-    final UUID gameUuid = UUID.randomUUID();
-    final Highscore highscore = new Highscore();
-    
+    UUID gameId = UUID.randomUUID();
+    final Highscore highscore = new Highscore(this);
+    final Map<UUID, SurvivalPlayer> survivalPlayers = new HashMap<>();
+    SQLDatabase db;
+
     // Setup event handlers
     @Override
     public void onEnable() {
+        db = new SQLDatabase(this);
         loadConfigFiles();
-        mapId = getConfig().getString("MapID", mapId);
-        mapPath = getConfig().getString("MapPath", mapPath);
-        debug = getConfig().getBoolean("Debug", false);
-        WorldLoader.loadWorlds(this, new BukkitFuture<WorldLoader>() {
-            @Override public void run() {
-                onWorldsLoaded(get());
-            }
-        }, mapPath);
-    }
-
-    public void onDisable() {
-        if (tickTask != null) {
-            tickTask.cancel();
-            tickTask = null;
+        ConfigurationSection gameConfig;
+        ConfigurationSection worldConfig;
+        try {
+            gameConfig = new YamlConfiguration().createSection("tmp", (Map<String, Object>)JSONValue.parse(new FileReader("game_config.json")));
+            worldConfig = YamlConfiguration.loadConfiguration(new FileReader("GameWorld/config.yml"));
+        } catch (Throwable t) {
+            t.printStackTrace();
+            getServer().shutdown();
+            return;
         }
-        processedChunks.clear();
-    }
+        mapId = gameConfig.getString("map_id", mapId);
+        gameId = UUID.fromString(gameConfig.getString("unique_id"));
+        debug = gameConfig.getBoolean("debug", debug);
 
-    private void onWorldsLoaded(WorldLoader worldLoader) {
-        this.world = worldLoader.getWorld(0);
+        for (String ids: gameConfig.getStringList("members")) getSurvivalPlayer(UUID.fromString(ids));
+        for (String ids: gameConfig.getStringList("spectators")) getSurvivalPlayer(UUID.fromString(ids)).setSpectator();
+
+        WorldCreator wc = WorldCreator.name("GameWorld");
+        wc.generator("VoidGenerator");
+        wc.type(WorldType.FLAT);
+        try {
+            wc.environment(World.Environment.valueOf(worldConfig.getString("world.Environment").toUpperCase()));
+        } catch (Throwable t) {
+            wc.environment(World.Environment.NORMAL);
+        }
+        world = wc.createWorld();
+
         world.setDifficulty(Difficulty.HARD);
         world.setPVP(false);
         world.setTime(1000L);
@@ -191,19 +205,17 @@ public class SurvivalGames extends Game implements Listener {
                 onTick();
             }
         };
-        tickTask.runTaskTimer(MinigamesPlugin.getInstance(), 1L, 1L);
-        MinigamesPlugin.getInstance().getEventManager().registerEvents(this, this);
+        tickTask.runTaskTimer(this, 1L, 1L);
+        getServer().getPluginManager().registerEvents(this, this);
         setupScoreboard();
         processChunkArea(world.getSpawnLocation().getChunk());
         if (!debug) highscore.init();
-        ready();
     }
 
-    void loadConfigFiles()
-    {
+    void loadConfigFiles() {
         // Load config files
         ConfigurationSection config;
-        config = getConfigFile("items");
+        config = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "items.yml"));
         for (String key : config.getKeys(false)) {
             ItemStack item = config.getItemStack(key);
             if (item == null) {
@@ -212,7 +224,7 @@ public class SurvivalGames extends Game implements Listener {
                 stockItems.put(key, item);
             }
         }
-        config = getConfigFile("phases");
+        config = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "phases.yml"));
         kitItems.addAll(config.getStringList("kit"));
         for (Object o : config.getList("phases")) {
             if (o instanceof List) {
@@ -253,17 +265,17 @@ public class SurvivalGames extends Game implements Listener {
 
     private void onTick() {
         final long ticks = this.ticks++;
-        if (getPlayerUuids().isEmpty()) {
+        if (survivalPlayers.values().isEmpty()) {
             // All players left
-            cancel();
+            getServer().shutdown();
             return;
         }
         if (state != State.INIT && state != State.WAIT_FOR_PLAYERS) {
             // Everyone logged off
-            if (getOnlinePlayers().isEmpty()) {
+            if (getServer().getOnlinePlayers().isEmpty()) {
                 final long emptyTicks = this.emptyTicks++;
-                if (emptyTicks >= 20*60) {
-                    cancel();
+                if (emptyTicks >= 20*20) {
+                    getServer().shutdown();
                     return;
                 }
             } else {
@@ -272,12 +284,12 @@ public class SurvivalGames extends Game implements Listener {
         }
         if (ticks % 20 == 0 && state != State.INIT && state != State.WAIT_FOR_PLAYERS && state != State.COUNTDOWN) {
             // Update compass targets
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 if (getSurvivalPlayer(player).isPlayer() && player.getInventory().contains(Material.COMPASS)) {
                     Location playerLoc = player.getLocation();
                     Location loc = world.getSpawnLocation();
                     double dist = Double.MAX_VALUE;
-                    for (Player target : getOnlinePlayers()) {
+                    for (Player target : getServer().getOnlinePlayers()) {
                         if (!player.equals(target) && getSurvivalPlayer(target).isPlayer()) {
                             Location targetLoc = target.getLocation();
                             double newDist = playerLoc.distanceSquared(targetLoc);
@@ -296,7 +308,7 @@ public class SurvivalGames extends Game implements Listener {
             // Check if only one player is left
             int aliveCount = 0;
             UUID survivor = null;
-            for (PlayerInfo info : getPlayers()) {
+            for (SurvivalPlayer info : survivalPlayers.values()) {
                 if (getSurvivalPlayer(info.getUuid()).isPlayer()) {
                     survivor = info.getUuid();
                     aliveCount++;
@@ -304,7 +316,7 @@ public class SurvivalGames extends Game implements Listener {
             }
             if (aliveCount == 2 && !compassesGiven) {
                 compassesGiven = true;
-                for (Player player : getOnlinePlayers()) {
+                for (Player player : getServer().getOnlinePlayers()) {
                     if (getSurvivalPlayer(player).isPlayer()) {
                         player.getWorld().dropItemNaturally(player.getEyeLocation(), stockItemForKey("SpecialCompass")).setPickupDelay(0);
                     }
@@ -322,16 +334,16 @@ public class SurvivalGames extends Game implements Listener {
             }
         }
         // Check for disconnects
-        for (PlayerInfo info : getPlayers()) {
+        for (SurvivalPlayer info : survivalPlayers.values()) {
             SurvivalPlayer sp = getSurvivalPlayer(info.getUuid());
             if (!info.isOnline()) {
                 // Kick players who disconnect too long
                 long discTicks = sp.getDiscTicks();
                 if (state == State.SUDDEN_DEATH) {
-                    MinigamesPlugin.getInstance().leavePlayer(info.getUuid());
+                    onPlayerLeave(info.getUuid());
                 } else if (discTicks > 20*60) {
                     getLogger().info("Kicking " + sp.getName() + " because they were disconnected too long");
-                    MinigamesPlugin.getInstance().leavePlayer(info.getUuid());
+                    onPlayerLeave(info.getUuid());
                 }
                 sp.setDiscTicks(discTicks + 1);
             }
@@ -352,9 +364,9 @@ public class SurvivalGames extends Game implements Listener {
         case COUNTDOWN:
             // Once the countdown starts, remove everyone who disconnected
             setupScoreboard();
-            for (PlayerInfo info : getPlayers()) {
+            for (SurvivalPlayer info : survivalPlayers.values()) {
                 if (!info.isOnline()) {
-                    MinigamesPlugin.leavePlayer(info.getUuid());
+                    onPlayerLeave(info.getUuid());
                 } else {
                     if (getSurvivalPlayer(info.getUuid()).isPlayer()) {
                         sidebarObjective.getScore(getSurvivalPlayer(info.getUuid()).getName()).setScore(0);
@@ -370,7 +382,7 @@ public class SurvivalGames extends Game implements Listener {
             break;
         case LOOTING:
             // Remove everyone who disconnected, reset everyone else so they can start playing
-            for (PlayerInfo info : getPlayers()) {
+            for (SurvivalPlayer info : survivalPlayers.values()) {
                 if (info.isOnline()) {
                     Player player = info.getPlayer();
                     makeMobile(player);
@@ -379,15 +391,15 @@ public class SurvivalGames extends Game implements Listener {
             }
             break;
         case FREE_FOR_ALL:
-            for (Player player : getOnlinePlayers()) {
-                Title.show(player, "", "&cFight!");
+            for (Player player : getServer().getOnlinePlayers()) {
+                Msg.sendTitle(player, "", "&cFight!");
                 Msg.send(player, "&cFight!");
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 1f, 1f);
             }
             world.setPVP(true);
             break;
         case COUNTDOWN_SUDDEN_DEATH:
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     makeImmobile(player, getSurvivalPlayer(player).getSpawnLocation());
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDERDRAGON_GROWL, 1f, 1f);
@@ -397,7 +409,7 @@ public class SurvivalGames extends Game implements Listener {
             world.setTime(0);
             break;
         case SUDDEN_DEATH:
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     makeMobile(player);
                 }
@@ -405,7 +417,7 @@ public class SurvivalGames extends Game implements Listener {
             world.setPVP(true);
             break;
         case END:
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDERDRAGON_DEATH, 1f, 1f);
             }
         }
@@ -437,13 +449,13 @@ public class SurvivalGames extends Game implements Listener {
     State tickWaitForPlayers(long ticks)
     {
         if (ticks % (20*5) == 0) {
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 if (!getSurvivalPlayer(player).isReady()) {
                     List<Object> list = new ArrayList<>();
                     list.add(Msg.format("&fClick here when ready: "));
                     list.add(button("&3[Ready]", "&3Mark yourself as ready", "/ready"));
                     list.add(Msg.format("&f or "));
-                    list.add(button("&c[Leave]", "&cLeave this game", "/leave"));
+                    list.add(button("&c[Quit]", "&cLeave this game", "/quit"));
                     Msg.sendRaw(player, list);
                 }
             }
@@ -454,7 +466,7 @@ public class SurvivalGames extends Game implements Listener {
             // If the player count is high enough and everybody's ready, go ahead and start.
             boolean allReady = true;
             int playerCount = 0;
-            for (PlayerInfo info : getPlayers()) {
+            for (SurvivalPlayer info : survivalPlayers.values()) {
                 playerCount++;
                 if (!getSurvivalPlayer(info.getUuid()).isReady()) {
                     allReady = false;
@@ -464,9 +476,9 @@ public class SurvivalGames extends Game implements Listener {
             if (allReady && playerCount >= minPlayers()) return State.COUNTDOWN;
         }
         if (timeLeft <= 0) {
-            if (getOnlinePlayers().size() >= minPlayers()) return State.COUNTDOWN;
+            if (getServer().getOnlinePlayers().size() >= minPlayers()) return State.COUNTDOWN;
             // Cancel if there are not at least 2 people
-            cancel();
+            getServer().shutdown();
         }
         return null;
     }
@@ -476,17 +488,17 @@ public class SurvivalGames extends Game implements Listener {
         long timeLeft = state.seconds * 20 - ticks;
         if (timeLeft % 20L == 0) {
             long seconds = timeLeft / 20;
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 setSidebarTitle("Get ready", timeLeft);
                 if (seconds == 0) {
-                    Title.show(player, "&a&lGO!", "");
+                    Msg.sendTitle(player, "&a&lGO!", "");
                     Msg.send(player, "&bGO!");
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_LARGE_BLAST, 1f, 1f);
                 } else if (seconds == state.seconds) {
-                    Title.show(player, "&aGet Ready!", "&aGame starts in " + state.seconds + " seconds");
+                    Msg.sendTitle(player, "&aGet Ready!", "&aGame starts in " + state.seconds + " seconds");
                     Msg.send(player, "&bGame starts in %d seconds", seconds);
                 } else {
-                    Title.show(player, "&a&l" + seconds, "&aGame Start");
+                    Msg.sendTitle(player, "&a&l" + seconds, "&aGame Start");
                     Msg.send(player, "&b%d", seconds);
                     player.playNote(player.getEyeLocation(), Instrument.PIANO, new Note((int)ticks/20));
                 }
@@ -528,15 +540,15 @@ public class SurvivalGames extends Game implements Listener {
         if (timeLeft % 20L == 0) {
             setSidebarTitle("Get ready", timeLeft);
             long seconds = timeLeft / 20;
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 if (seconds == 0) {
-                    Title.show(player, "", "&c&lKILL!");
+                    Msg.sendTitle(player, "", "&c&lKILL!");
                     Msg.send(player, "&bGO!");
                 } else if (seconds == state.seconds) {
-                    Title.show(player, "&cGet Ready!", "&cSudden death in " + state.seconds + " seconds");
+                    Msg.sendTitle(player, "&cGet Ready!", "&cSudden death in " + state.seconds + " seconds");
                     Msg.send(player, "&bGame starts in %d seconds", seconds);
                 } else {
-                    Title.show(player, "&c&l" + seconds, "&cSudden Death");
+                    Msg.sendTitle(player, "&c&l" + seconds, "&cSudden Death");
                     Msg.send(player, "&b%d", seconds);
                 }
             }
@@ -551,7 +563,7 @@ public class SurvivalGames extends Game implements Listener {
             setSidebarTitle("Sudden Death", ticks);
         }
         if (ticks > 0 && ticks % SUDDEN_DEATH_WITHER_SECONDS == 0) {
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     player.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, (int)SUDDEN_DEATH_WITHER_SECONDS*20, 0, true));
                 }
@@ -563,7 +575,7 @@ public class SurvivalGames extends Game implements Listener {
     State tickEnd(long ticks)
     {
         if (ticks == 0) {
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 player.setGameMode(GameMode.SPECTATOR);
                 if (winnerName != null) {
                     Msg.send(player, "&b%s wins the game!", winnerName);
@@ -572,7 +584,7 @@ public class SurvivalGames extends Game implements Listener {
                 }
                 List<Object> list = new ArrayList<>();
                 list.add("Click here to leave the game: ");
-                list.add(button("&c[Leave]", "&cLeave this game", "/leave"));
+                list.add(button("&c[Quit]", "&cLeave this game", "/quit"));
                 Msg.sendRaw(player, list);
             }
         }
@@ -581,11 +593,11 @@ public class SurvivalGames extends Game implements Listener {
             setSidebarTitle("Game Over", timeLeft);
         }
         if (timeLeft % (20*5) == 0) {
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 if (winnerName != null) {
-                    Title.show(player, "&a" + winnerName, "&aWins the Game!");
+                    Msg.sendTitle(player, "&a" + winnerName, "&aWins the Game!");
                 } else {
-                    Title.show(player, "&cDraw!", "&cNobody wins");
+                    Msg.sendTitle(player, "&cDraw!", "&cNobody wins");
                 }
                 Location loc = player.getLocation();
                 Firework firework = (Firework)loc.getWorld().spawnEntity(loc, EntityType.FIREWORK);
@@ -593,7 +605,7 @@ public class SurvivalGames extends Game implements Listener {
                 firework.setFireworkMeta(meta);
             }
         }
-        if (timeLeft <= 0) cancel();
+        if (timeLeft <= 0) getServer().shutdown();
         return null;
     }
 
@@ -623,10 +635,8 @@ public class SurvivalGames extends Game implements Listener {
         return result;
     }
 
-    @Override
     public void onPlayerReady(Player player) {
         didSomeoneJoin = true;
-        Players.reset(player);
         player.setScoreboard(scoreboard);
         final SurvivalPlayer survivalPlayer = getSurvivalPlayer(player);
         survivalPlayer.setName(player.getName());
@@ -652,7 +662,7 @@ public class SurvivalGames extends Game implements Listener {
                     showCredits(player);
                 }
             }
-        }.runTaskLater(MinigamesPlugin.getInstance(), 20*5);
+        }.runTaskLater(this, 20*5);
         if (debug) {
             for (String debugMessage: debugMessages) {
                 Msg.send(player, "&c&lDEBUG&r %s", debugMessage);
@@ -660,38 +670,49 @@ public class SurvivalGames extends Game implements Listener {
         }
     }
 
-    SurvivalPlayer getSurvivalPlayer(UUID uuid)
-    {
-        return getPlayer(uuid).<SurvivalPlayer>getCustomData(SurvivalPlayer.class);
+    SurvivalPlayer getSurvivalPlayer(UUID uuid) {
+        SurvivalPlayer result = survivalPlayers.get(uuid);
+        if (result == null) {
+            result = new SurvivalPlayer(this, uuid);
+            survivalPlayers.put(uuid, result);
+        }
+        return result;
     }
 
-    SurvivalPlayer getSurvivalPlayer(Player player)
-    {
-        return getSurvivalPlayer(player.getUniqueId());
+    SurvivalPlayer getSurvivalPlayer(Player player) {
+        SurvivalPlayer result = getSurvivalPlayer(player.getUniqueId());
+        result.setName(player.getName());
+        return result;
     }
 
-    @Override
-    public Location getSpawnLocation(Player player)
-    {
-        switch (state)
-        {
+    @EventHandler
+    public void onPlayerSpawnLocation(PlayerSpawnLocationEvent event) {
+        Player player = event.getPlayer();
+        if (!getSurvivalPlayer(player).hasJoinedBefore) {
+            event.setSpawnLocation(getSpawnLocation(player));
+        }
+    }
+
+    public Location getSpawnLocation(Player player) {
+        switch (state) {
         case INIT:
         case WAIT_FOR_PLAYERS:
         case COUNTDOWN:
         case COUNTDOWN_SUDDEN_DEATH:
             return getSurvivalPlayer(player).getSpawnLocation();
         default:
-            if (getSurvivalPlayer(player).isSpectator()) {
-                return world.getSpawnLocation();
-            }
+            return world.getSpawnLocation();
         }
-        return null;
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onPlayerJoin(PlayerJoinEvent event) {
         final Player player = event.getPlayer();
         final SurvivalPlayer survivalPlayer = getSurvivalPlayer(player);
+        if (!survivalPlayer.hasJoinedBefore) {
+            survivalPlayer.hasJoinedBefore = true;
+            onPlayerReady(player);
+        }
         player.setScoreboard(scoreboard);
         if (survivalPlayer.isSpectator()) {
             player.setGameMode(GameMode.SPECTATOR);
@@ -713,9 +734,11 @@ public class SurvivalGames extends Game implements Listener {
             player.setGameMode(GameMode.SURVIVAL);
         }
     }
-    
+
     @Override
-    public boolean onCommand(Player player, String command, String[] args) {
+    public boolean onCommand(CommandSender sender, Command bcommand, String command, String[] args) {
+        if (!(sender instanceof Player)) return true;
+        Player player = (Player)sender;
         if (command.equalsIgnoreCase("ready") && state == State.WAIT_FOR_PLAYERS) {
             getSurvivalPlayer(player).setReady(true);
             sidebarObjective.getScore(player.getName()).setScore(1);
@@ -730,7 +753,7 @@ public class SurvivalGames extends Game implements Listener {
                 return true;
             }
             String arg = args[0];
-            for (Player target : getOnlinePlayers()) {
+            for (Player target : getServer().getOnlinePlayers()) {
                 if (arg.equalsIgnoreCase(target.getName())) {
                     player.teleport(target);
                     Msg.send(player, "&bTeleported to %s", target.getName());
@@ -741,43 +764,16 @@ public class SurvivalGames extends Game implements Listener {
             return true;
         } else if (command.equalsIgnoreCase("highscore") || command.equalsIgnoreCase("hi")) {
             showHighscore(player);
+        } else if (command.equalsIgnoreCase("quit")) {
+            onPlayerLeave(player.getUniqueId());
         } else {
             return false;
         }
         return true;
     }
 
-    @Override
-    public boolean joinPlayers(List<UUID> uuids)
-    {
-        switch (state) {
-        case INIT:
-        case WAIT_FOR_PLAYERS:
-            return super.joinPlayers(uuids);
-        default: return false;
-        }
-    }
-
-    @Override
-    public boolean joinSpectators(List<UUID> uuids)
-    {
-        switch (state) {
-        case INIT:
-        case WAIT_FOR_PLAYERS:
-            return false;
-        default:
-            if (super.joinSpectators(uuids)) {
-                for (UUID uuid : uuids) {
-                    getSurvivalPlayer(uuid).setSpectator();
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void processPlayerChunks() {
-        for (Player player : getOnlinePlayers()) {
+        for (Player player : getServer().getOnlinePlayers()) {
             Chunk chunk = player.getLocation().getChunk();
             processChunkArea(chunk.getX(), chunk.getZ());
         }
@@ -786,7 +782,7 @@ public class SurvivalGames extends Game implements Listener {
     private void processChunkArea(Chunk chunk) {
         processChunkArea(chunk.getX(), chunk.getZ());
     }
-    
+
     private void processChunkArea(int cx, int cz) {
         final int RADIUS = 3;
         for (int dx = -RADIUS; dx <= RADIUS; ++dx) {
@@ -871,7 +867,7 @@ public class SurvivalGames extends Game implements Listener {
     private boolean isNearAnyPlayer(Block block) {
         final int RADIUS = 16;
         final int VRADIUS = 8;
-        for (Player player : getOnlinePlayers()) {
+        for (Player player : getServer().getOnlinePlayers()) {
             final int px, py, pz;
             {
                 final Location tmp = player.getLocation();
@@ -891,14 +887,14 @@ public class SurvivalGames extends Game implements Listener {
     }
 
     private void setupScoreboard() {
-        scoreboard = MinigamesPlugin.getInstance().getServer().getScoreboardManager().getNewScoreboard();
+        scoreboard = getServer().getScoreboardManager().getNewScoreboard();
         sidebarObjective = scoreboard.registerNewObjective("Sidebar", "dummy");
         sidebarObjective.setDisplaySlot(DisplaySlot.SIDEBAR);
         sidebarObjective.setDisplayName(Msg.format("&aSurvival Games"));
         Objective healthObjective = scoreboard.registerNewObjective("Health", "health");
         healthObjective.setDisplaySlot(DisplaySlot.BELOW_NAME);
         healthObjective.setDisplayName(Msg.format("&cHearts"));
-        for (PlayerInfo info : getPlayers()) {
+        for (SurvivalPlayer info : survivalPlayers.values()) {
             if (info.isOnline()) {
                 info.getPlayer().setScoreboard(scoreboard);
             }
@@ -954,7 +950,7 @@ public class SurvivalGames extends Game implements Listener {
         for (Block block : restockChests) {
             // See if player is nearby
             final double CHEST_RADIUS = 32;
-            for (Player player : getOnlinePlayers()) {
+            for (Player player : getServer().getOnlinePlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     if (player.getLocation().distanceSquared(block.getLocation()) < CHEST_RADIUS * CHEST_RADIUS) {
                         skipped++;
@@ -967,12 +963,12 @@ public class SurvivalGames extends Game implements Listener {
         getLogger().info("Phase " + phase + ": Restocked " + count + " chests, skipped " + skipped);
         new BukkitRunnable() {
             @Override public void run() {
-                for (Player player : getOnlinePlayers()) {
-                    Title.show(player, "", "&3Chests restocked");
+                for (Player player : getServer().getOnlinePlayers()) {
+                    Msg.sendTitle(player, "", "&3Chests restocked");
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
                 }
             }
-        }.runTaskLater(MinigamesPlugin.getInstance(), 20*3);
+        }.runTaskLater(this, 20*3);
     }
 
     boolean stockBlock(Block block, int phase) {
@@ -1082,7 +1078,7 @@ public class SurvivalGames extends Game implements Listener {
     public void onBlockBurn(BlockBurnEvent event) {
         event.setCancelled(true);
     }
-    
+
     @EventHandler(ignoreCancelled = true)
     public void onHangingBreak(HangingBreakEvent event) {
         event.setCancelled(true);
@@ -1124,13 +1120,13 @@ public class SurvivalGames extends Game implements Listener {
         // Lighting
         player.getWorld().strikeLightningEffect(player.getLocation());
         // Announce
-        for (Player other : getOnlinePlayers()) {
-            Title.show(other, "", "&c" + event.getDeathMessage());
+        for (Player other : getServer().getOnlinePlayers()) {
+            Msg.sendTitle(other, "", "&c" + event.getDeathMessage());
         }
         // Option to leave
         List<Object> list = new ArrayList<>();
         list.add("You died. Click here to leave the game: ");
-        list.add(button("&c[Leave]", "&cLeave this game", "/leave"));
+        list.add(button("&c[Quit]", "&cLeave this game", "/quit"));
         Msg.sendRaw(player, list);
         // Record end time
         getSurvivalPlayer(player).setEndTime(new Date());
@@ -1151,7 +1147,7 @@ public class SurvivalGames extends Game implements Listener {
     void onUse(Player player, Event event)
     {
         if (stockItemForKey("SpecialFirework").isSimilar(player.getItemInHand())) {
-            for (Player other : getOnlinePlayers()) {
+            for (Player other : getServer().getOnlinePlayers()) {
                 if (!other.equals(player) && getSurvivalPlayer(other).isPlayer()) {
                     Location otherLoc = other.getLocation();
                     Block highest = otherLoc.getWorld().getHighestBlockAt(otherLoc);
@@ -1234,11 +1230,13 @@ public class SurvivalGames extends Game implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
-    public void onPlayerLeave(PlayerLeaveEvent event) {
-        UUID uuid = event.getUuid();
+    public void onPlayerLeave(UUID uuid) {
         getSurvivalPlayer(uuid).setEndTime(new Date());
         getSurvivalPlayer(uuid).recordHighscore();
+        Player player = getServer().getPlayer(uuid);
+        if (player != null) player.kickPlayer("Leaving");
+        survivalPlayers.remove(uuid);
+        daemonRemovePlayer(uuid);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -1267,7 +1265,7 @@ public class SurvivalGames extends Game implements Listener {
             if (player.getLocation().distanceSquared(world.getSpawnLocation()) > SUDDEN_DEATH_RADIUS*SUDDEN_DEATH_RADIUS) {
                 player.teleport(getSurvivalPlayer(player).getSafeLocation());
                 Msg.send(player, "&4You cannot leave spawn during Sudden Death");
-                Title.show(player, "", "&4Sudden Death");
+                Msg.sendTitle(player, "", "&4Sudden Death");
             } else {
                 getSurvivalPlayer(player).setSafeLocation(player.getLocation());
             }
@@ -1372,4 +1370,97 @@ public class SurvivalGames extends Game implements Listener {
         for (String credit : credits) sb.append(" ").append(credit);
         Msg.send(player, "&b&l%s&r built by&b%s", mapId, sb.toString());
     }
+
+    // Some Daemon related functions. Copy and paste worthy.
+
+    // Request from a player to join this game.  It gets sent to us by
+    // the daemon when the player enters the appropriate remote
+    // command.  Tell the daemon that that the request has been
+    // accepted, then wait for the daemon to send the player here.
+    @EventHandler
+    public void onConnectMessage(ConnectMessageEvent event) {
+        final Message message = event.getMessage();
+        if (message.getFrom().equals("daemon") && message.getChannel().equals("minigames")) {
+            Map<String, Object> payload = (Map<String, Object>)message.getPayload();
+            if (payload == null) return;
+            boolean join = false;
+            boolean leave = false;
+            boolean spectate = false;
+            switch ((String)payload.get("action")) {
+            case "player_join_game":
+                join = true;
+                spectate = false;
+                break;
+            case "player_spectate_game":
+                join = true;
+                spectate = true;
+                break;
+            case "player_leave_game":
+                leave = true;
+                break;
+            default:
+                return;
+            }
+            if (join) {
+                final UUID gameId = UUID.fromString((String)payload.get("game"));
+                if (!gameId.equals(gameId)) return;
+                final UUID player = UUID.fromString((String)payload.get("player"));
+                if (spectate) {
+                    if (survivalPlayers.containsKey(player)) return;
+                    getSurvivalPlayer(player).setSpectator();
+                    daemonAddSpectator(player);
+                } else {
+                    if (state != State.WAIT_FOR_PLAYERS) return;
+                    if (survivalPlayers.containsKey(player)) return;
+                    daemonAddPlayer(player);
+                }
+            } else if (leave) {
+                final UUID playerId = UUID.fromString((String)payload.get("player"));
+                onPlayerLeave(playerId);
+            }
+        }
+    }
+
+    void daemonRemovePlayer(UUID uuid) {
+        survivalPlayers.remove(uuid);
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "player_leave_game");
+        map.put("player", uuid.toString());
+        map.put("game", gameId.toString());
+        Connect.getInstance().send("daemon", "minigames", map);
+    }
+
+    void daemonAddPlayer(UUID uuid) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "game_add_player");
+        map.put("player", uuid.toString());
+        map.put("game", gameId.toString());
+        Connect.getInstance().send("daemon", "minigames", map);
+    }
+
+    void daemonAddSpectator(UUID uuid) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "game_add_spectator");
+        map.put("player", uuid.toString());
+        map.put("game", gameId.toString());
+        Connect.getInstance().send("daemon", "minigames", map);
+    }
+
+    void daemonGameEnd() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "game_end");
+        map.put("game", gameId.toString());
+        Connect.getInstance().send("daemon", "minigames", map);
+    }
+
+    void daemonGameConfig(String key, Object value) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "game_config");
+        map.put("game", gameId.toString());
+        map.put("key", key);
+        map.put("value", value);
+        Connect.getInstance().send("daemon", "minigames", map);
+    }
+
+    // End of daemon stuff
 }

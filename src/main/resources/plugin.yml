@@ -1,0 +1,11 @@
+name: SurvivalGames
+description: SurvivalGames mini game
+authors: [ StarTux ]
+version: 0.1-SNAPSHOT
+main: com.winthier.minigames.sg.SurvivalGames
+depend: [ SQL, Connect ]
+softdepend: []
+commands:
+  colorfall:
+    aliases: [ready, tp, highscore, hi, quit]
+permissions: {}

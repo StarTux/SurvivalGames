@@ -362,6 +362,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
         stateTicks = 0;
         switch (newState) {
         case COUNTDOWN:
+            daemonGameConfig("players_may_join", false);
             // Once the countdown starts, remove everyone who disconnected
             setupScoreboard();
             for (SurvivalPlayer info : survivalPlayers.values()) {
@@ -417,6 +418,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
             world.setPVP(true);
             break;
         case END:
+            daemonGameEnd();
             for (Player player : getServer().getOnlinePlayers()) {
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDERDRAGON_DEATH, 1f, 1f);
             }

@@ -28,8 +28,7 @@ public class Players {
         player.resetPlayerTime();
         player.resetPlayerWeather();
         // health
-        player.setMaxHealth(20.0);
-        player.setHealth(player.getMaxHealth());
+        player.setHealth(20.0);
         // food
         player.setFoodLevel(20);
         player.setSaturation(20.0f);

@@ -30,7 +30,6 @@ import org.bukkit.Instrument;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Note;
-import org.bukkit.SkullType;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -78,7 +77,6 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
@@ -160,7 +158,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
     SQLDatabase db;
 
     // Setup event handlers
-    @Override
+    @Override @SuppressWarnings("unchecked")
     public void onEnable() {
         db = new SQLDatabase(this);
         loadConfigFiles();
@@ -212,6 +210,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
         if (!debug) highscore.init();
     }
 
+    @SuppressWarnings("unchecked")
     void loadConfigFiles() {
         // Load config files
         ConfigurationSection config;
@@ -403,7 +402,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
             for (Player player : getServer().getOnlinePlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     makeImmobile(player, getSurvivalPlayer(player).getSpawnLocation());
-                    player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDERDRAGON_GROWL, 1f, 1f);
+                    player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 1f);
                 }
             }
             world.setPVP(false);
@@ -420,7 +419,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
         case END:
             daemonGameEnd();
             for (Player player : getServer().getOnlinePlayers()) {
-                player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDERDRAGON_DEATH, 1f, 1f);
+                player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 1f, 1f);
             }
         }
     }
@@ -495,7 +494,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
                 if (seconds == 0) {
                     Msg.sendTitle(player, "&a&lGO!", "");
                     Msg.send(player, "&bGO!");
-                    player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_LARGE_BLAST, 1f, 1f);
+                    player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 1f, 1f);
                 } else if (seconds == state.seconds) {
                     Msg.sendTitle(player, "&aGet Ready!", "&aGame starts in " + state.seconds + " seconds");
                     Msg.send(player, "&bGame starts in %d seconds", seconds);
@@ -890,10 +889,10 @@ public class SurvivalGames extends JavaPlugin implements Listener {
 
     private void setupScoreboard() {
         scoreboard = getServer().getScoreboardManager().getNewScoreboard();
-        sidebarObjective = scoreboard.registerNewObjective("Sidebar", "dummy");
+        sidebarObjective = scoreboard.registerNewObjective("Sidebar", "dummy", "SurvivalGames");
         sidebarObjective.setDisplaySlot(DisplaySlot.SIDEBAR);
         sidebarObjective.setDisplayName(Msg.format("&aSurvival Games"));
-        Objective healthObjective = scoreboard.registerNewObjective("Health", "health");
+        Objective healthObjective = scoreboard.registerNewObjective("Health", "health", "Health");
         healthObjective.setDisplaySlot(DisplaySlot.BELOW_NAME);
         healthObjective.setDisplayName(Msg.format("&cHearts"));
         for (SurvivalPlayer info : survivalPlayers.values()) {
@@ -1001,11 +1000,16 @@ public class SurvivalGames extends JavaPlugin implements Listener {
         switch (block.getType()) {
         case FIRE:
             return;
-        case IRON_PLATE:
-        case GOLD_PLATE:
-        case STONE_PLATE:
-        case WOOD_PLATE:
-            if (stockItemForKey("SpecialLandMine").isSimilar(player.getItemInHand())) {
+        case ACACIA_PRESSURE_PLATE:
+        case BIRCH_PRESSURE_PLATE:
+        case DARK_OAK_PRESSURE_PLATE:
+        case HEAVY_WEIGHTED_PRESSURE_PLATE:
+        case JUNGLE_PRESSURE_PLATE:
+        case LIGHT_WEIGHTED_PRESSURE_PLATE:
+        case OAK_PRESSURE_PLATE:
+        case SPRUCE_PRESSURE_PLATE:
+        case STONE_PRESSURE_PLATE:
+            if (stockItemForKey("SpecialLandMine").isSimilar(player.getInventory().getItemInMainHand())) {
                 landMines.put(block, player.getUniqueId());
                 getLogger().info(String.format("%s placed Land Mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
             }
@@ -1024,16 +1028,21 @@ public class SurvivalGames extends JavaPlugin implements Listener {
             return;
         }
         switch (event.getBlock().getType()) {
-        case LONG_GRASS:
+        case TALL_GRASS:
         case DEAD_BUSH:
-        case RED_ROSE:
-        case DOUBLE_PLANT:
+        case ROSE_BUSH:
+        case GRASS:
             // Allow
             return;
-        case IRON_PLATE:
-        case GOLD_PLATE:
-        case STONE_PLATE:
-        case WOOD_PLATE:
+        case ACACIA_PRESSURE_PLATE:
+        case BIRCH_PRESSURE_PLATE:
+        case DARK_OAK_PRESSURE_PLATE:
+        case HEAVY_WEIGHTED_PRESSURE_PLATE:
+        case JUNGLE_PRESSURE_PLATE:
+        case LIGHT_WEIGHTED_PRESSURE_PLATE:
+        case OAK_PRESSURE_PLATE:
+        case SPRUCE_PRESSURE_PLATE:
+        case STONE_PRESSURE_PLATE:
             if (landMines.containsKey(event.getBlock())) {
                 event.setCancelled(true);
                 landMines.remove(event.getBlock());
@@ -1054,7 +1063,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
     public void onBlockGrow(BlockGrowEvent event) {
         event.setCancelled(true);
     }
-    
+
     @EventHandler(ignoreCancelled = true)
     public void onBlockForm(BlockFormEvent event) {
         event.setCancelled(true);
@@ -1092,7 +1101,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
         if (getSurvivalPlayer(player).isSpectator()) {
             player.teleport(world.getSpawnLocation());
             player.setGameMode(GameMode.SPECTATOR);
-            player.setHealth(player.getMaxHealth());
+            player.setHealth(20.0);
             event.setDeathMessage(null);
             return;
         }
@@ -1135,20 +1144,19 @@ public class SurvivalGames extends JavaPlugin implements Listener {
         getSurvivalPlayer(player).recordHighscore();
     }
 
-    void reduceItemInHand(Player player)
-    {
-        ItemStack item = player.getItemInHand();
+    void reduceItemInHand(Player player) {
+        ItemStack item = player.getInventory().getItemInMainHand();
         if (item.getAmount() <= 1) {
-            player.setItemInHand(null);
+            player.getInventory().setItemInMainHand(null);
         } else {
             item.setAmount(item.getAmount() - 1);
-            player.setItemInHand(item);
+            player.getInventory().setItemInMainHand(item);
         }
     }
 
     void onUse(Player player, Event event)
     {
-        if (stockItemForKey("SpecialFirework").isSimilar(player.getItemInHand())) {
+        if (stockItemForKey("SpecialFirework").isSimilar(player.getInventory().getItemInMainHand())) {
             for (Player other : getServer().getOnlinePlayers()) {
                 if (!other.equals(player) && getSurvivalPlayer(other).isPlayer()) {
                     Location otherLoc = other.getLocation();
@@ -1163,17 +1171,22 @@ public class SurvivalGames extends JavaPlugin implements Listener {
             reduceItemInHand(player);
             if (event instanceof Cancellable) ((Cancellable)event).setCancelled(true);
             Msg.send(player, "&3Your enemies have been revealed!");
-            player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_LAUNCH, 1f, 1f);
+            player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1f, 1f);
         }
     }
 
     boolean onTrigger(Player player, Block block)
     {
         switch (block.getType()) {
-        case IRON_PLATE:
-        case GOLD_PLATE:
-        case WOOD_PLATE:
-        case STONE_PLATE:
+        case ACACIA_PRESSURE_PLATE:
+        case BIRCH_PRESSURE_PLATE:
+        case DARK_OAK_PRESSURE_PLATE:
+        case HEAVY_WEIGHTED_PRESSURE_PLATE:
+        case JUNGLE_PRESSURE_PLATE:
+        case LIGHT_WEIGHTED_PRESSURE_PLATE:
+        case OAK_PRESSURE_PLATE:
+        case SPRUCE_PRESSURE_PLATE:
+        case STONE_PRESSURE_PLATE:
             break;
         default: return false;
         }
@@ -1213,7 +1226,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         onUse(event.getPlayer(), event);
-        if (event.getPlayer().getItemInHand().getType() == Material.FLINT_AND_STEEL &&
+        if (event.getPlayer().getInventory().getItemInMainHand().getType() == Material.FLINT_AND_STEEL &&
             world.getPVP() &&
             event.getRightClicked() instanceof Player) {
             reduceItemInHand(event.getPlayer());
@@ -1379,7 +1392,7 @@ public class SurvivalGames extends JavaPlugin implements Listener {
     // the daemon when the player enters the appropriate remote
     // command.  Tell the daemon that that the request has been
     // accepted, then wait for the daemon to send the player here.
-    @EventHandler
+    @EventHandler @SuppressWarnings("unchecked")
     public void onConnectMessage(ConnectMessageEvent event) {
         final Message message = event.getMessage();
         if (message.getFrom().equals("daemon") && message.getChannel().equals("minigames")) {

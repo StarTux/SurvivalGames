@@ -2,7 +2,7 @@ package com.winthier.minigames.sg;
 
 import com.winthier.connect.Connect;
 import com.winthier.connect.Message;
-import com.winthier.connect.bukkit.event.ConnectMessageEvent;
+import com.winthier.connect.event.ConnectMessageEvent;
 import com.winthier.custom.CustomPlugin;
 import com.winthier.generic_events.PlayerCanDamageEntityEvent;
 import com.winthier.sql.SQLDatabase;

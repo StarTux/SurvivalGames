@@ -50,8 +50,6 @@ import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.Cancellable;
@@ -83,7 +81,6 @@ import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -93,9 +90,9 @@ import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
 @Getter
 public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
-    static final long RESTOCK_SECONDS = 60;
-    static final long RESTOCK_VARIANCE = 30;
-    static final double SUDDEN_DEATH_RADIUS = 20;
+    static final long RESTOCK_SECONDS = 100;
+    static final long RESTOCK_VARIANCE = 15;
+    static final double SUDDEN_DEATH_RADIUS = 24;
     // minigame stuf
     World world;
     @Setter boolean debug = false;
@@ -160,13 +157,13 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     void exit(Player player) {
+        bossBar.removePlayer(player);
         if (player.getGameMode() == GameMode.SPECTATOR) return;
         player.setWalkSpeed(0.2f);
         player.setAllowFlight(false);
         player.setFlying(false);
         player.setFlySpeed(0.1f);
         player.setWalkSpeed(0.2f);
-        bossBar.removePlayer(player);
     }
 
     /**
@@ -323,7 +320,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                             MytemsTag mytemsTag = MytemsTag.of(key.substring(1));
                             if (mytemsTag != null) {
                                 for (Mytems mytems : mytemsTag.toList()) {
-                                    lootItem.items.add(mytems.createItemStack());
+                                    LootItem lootItem2 = new LootItem();
+                                    lootItem2.items.add(mytems.createItemStack());
+                                    phaseList.add(lootItem2);
                                 }
                             }
                             if (mytemsTag == null) {
@@ -343,7 +342,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                             }
                         }
                     }
-                    phaseList.add(lootItem);
+                    if (!lootItem.items.isEmpty()) phaseList.add(lootItem);
                 }
                 phaseItems.add(phaseList);
             }
@@ -394,7 +393,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
             if (aliveCount == 2 && !compassesGiven) {
                 compassesGiven = true;
-                for (Player player : getServer().getOnlinePlayers()) {
+                for (Player player : world.getPlayers()) {
                     if (getSurvivalPlayer(player).isPlayer()) {
                         player.getWorld().dropItemNaturally(player.getEyeLocation(), itemForKey("SpecialCompass")).setPickupDelay(0);
                     }
@@ -475,7 +474,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setTitle(ChatColor.DARK_RED + "Fight");
             bossBar.setColor(BarColor.RED);
             bossBar.setProgress(1);
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 player.sendTitle("", ChatColor.RED + "Fight!");
                 player.sendMessage(ChatColor.RED + "Fight!");
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 1f, 1f);
@@ -486,10 +485,15 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setTitle(ChatColor.DARK_RED + "Sudden Death");
             bossBar.setColor(BarColor.RED);
             bossBar.setProgress(1);
-            for (Player player : getServer().getOnlinePlayers()) {
-                if (getSurvivalPlayer(player).isPlayer()) {
+            for (Player player : world.getPlayers()) {
+                SurvivalPlayer sp = getSurvivalPlayer(player);
+                if (sp.isPlayer()) {
                     makeImmobile(player, getSurvivalPlayer(player).getSpawnLocation());
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 1f);
+                } else if (sp.getSpawnLocation() != null) {
+                    player.teleport(sp.getSpawnLocation());
+                } else {
+                    player.teleport(world.getSpawnLocation());
                 }
             }
             world.setPVP(false);
@@ -499,7 +503,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setTitle(ChatColor.DARK_RED + "Sudden Death");
             bossBar.setColor(BarColor.RED);
             bossBar.setProgress(0);
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     makeMobile(player);
                 }
@@ -510,7 +514,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setTitle(ChatColor.AQUA + "The End");
             bossBar.setColor(BarColor.BLUE);
             bossBar.setProgress(1);
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 1f, 1f);
             }
             if (eventMode) {
@@ -524,7 +528,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + winnerName + " Survivor");
                 }
             }
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 player.setGameMode(GameMode.SPECTATOR);
                 if (winnerName != null) {
                     player.sendMessage(ChatColor.GREEN + winnerName + " wins the game!");
@@ -559,7 +563,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             secondsLeft = seconds;
             double progress = (double) seconds / (double) state.seconds;
             bossBar.setProgress(Math.max(0, Math.min(1, progress)));
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 if (seconds == 0) {
                     player.sendTitle("" + ChatColor.GREEN + ChatColor.BOLD + "GO!", "");
                     player.sendMessage(ChatColor.GREEN + "GO!");
@@ -571,6 +575,17 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     player.sendTitle("" + ChatColor.GREEN + ChatColor.BOLD + seconds, ChatColor.GREEN + "Game Start");
                     player.sendMessage("" + ChatColor.GREEN + seconds);
                     player.playNote(player.getEyeLocation(), Instrument.PIANO, new Note((int) ticks / 20));
+                }
+                SurvivalPlayer sp = getSurvivalPlayer(player);
+                if (sp.isPlayer()) {
+                    Location loc1 = player.getLocation();
+                    Location loc2 = sp.getSpawnLocation();
+                    double dist = loc1.getWorld().equals(loc2.getWorld())
+                        ? loc1.distanceSquared(loc2)
+                        : Double.MAX_VALUE;
+                    if (dist >= 1.0) {
+                        makeImmobile(player, sp.getSpawnLocation());
+                    }
                 }
             }
         }
@@ -617,7 +632,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             secondsLeft = seconds;
             double progress = (double) seconds / (double) state.seconds;
             bossBar.setProgress(Math.max(0, Math.min(1, progress)));
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 if (seconds == 0) {
                     player.sendTitle("", "" + ChatColor.RED + ChatColor.BOLD + "KILL!");
                     player.sendMessage(ChatColor.GREEN + "GO!");
@@ -636,7 +651,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     State tickSuddenDeath(long ticks) {
         if (ticks > 0 && (ticks % 200) == 0) {
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     player.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 20, 0, true));
                 }
@@ -654,11 +669,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setProgress(Math.max(0, Math.min(1, progress)));
         }
         if (timeLeft % (20 * 5) == 0) {
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 Location loc = player.getLocation();
-                Firework firework = (Firework) loc.getWorld().spawnEntity(loc, EntityType.FIREWORK);
-                FireworkMeta meta = (FireworkMeta) itemForKey("SpecialFireworkVictory").getItemMeta();
-                firework.setFireworkMeta(meta);
+                // Firework firework = (Firework) loc.getWorld().spawnEntity(loc, EntityType.FIREWORK);
+                // FireworkMeta meta = (FireworkMeta) itemForKey("SpecialFireworkVictory").getItemMeta();
+                // firework.setFireworkMeta(meta);
             }
         }
         if (timeLeft <= 0) {
@@ -783,7 +798,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         final ChunkCoord cc = new ChunkCoord(chunk.getX(), chunk.getZ());
         if (processedChunks.contains(cc)) return;
         processedChunks.add(cc);
-        chunk.setForceLoaded(true);
         for (BlockState blockState : chunk.getTileEntities()) {
             if (blockState instanceof Chest) {
                 Block block = blockState.getBlock();
@@ -849,7 +863,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     private boolean isNearAnyPlayer(Block block) {
         final int r = 16;
         final int vr = 8;
-        for (Player player : getServer().getOnlinePlayers()) {
+        for (Player player : world.getPlayers()) {
             final int px;
             final int py;
             final int pz;
@@ -902,13 +916,20 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     void restockAllChests() {
         int count = 0;
         int skipped = 0;
+        final double chestRadius = 20;
+        final double rr = chestRadius * chestRadius;
     blockLoop:
         for (Block block : restockChests) {
+            Location blockLocation = block.getLocation();
+            // Near spawn?
+            if (restockPhase > 0 && blockLocation.distanceSquared(world.getSpawnLocation()) < rr) {
+                skipped++;
+                continue blockLoop;
+            }
             // See if player is nearby
-            final double chestRadius = 32;
-            for (Player player : getServer().getOnlinePlayers()) {
+            for (Player player : world.getPlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
-                    if (player.getLocation().distanceSquared(block.getLocation()) < chestRadius * chestRadius) {
+                    if (player.getLocation().distanceSquared(blockLocation) < rr) {
                         skipped++;
                         continue blockLoop;
                     }
@@ -919,7 +940,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         getLogger().info("Phase " + restockPhase + ": Restocked " + count + " chests, skipped " + skipped);
         new BukkitRunnable() {
             @Override public void run() {
-                for (Player player : getServer().getOnlinePlayers()) {
+                for (Player player : world.getPlayers()) {
                     player.sendTitle("", ChatColor.GREEN + "Chests restocked");
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
                 }
@@ -994,6 +1015,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (Tag.TALL_FLOWERS.isTagged(material)) {
             return; // Allow
         }
+        if (material == Material.FIRE) return;
         if (Tag.PRESSURE_PLATES.isTagged(material) && landMines.containsKey(block)) {
             event.setCancelled(true);
             landMines.remove(block);
@@ -1091,13 +1113,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (itemForKey("SpecialFirework").isSimilar(item)) {
             for (Player other : world.getPlayers()) {
                 if (other.equals(player) || !getSurvivalPlayer(other).isPlayer()) continue;
-                Location otherLoc = other.getLocation();
-                Block highest = otherLoc.getWorld().getHighestBlockAt(otherLoc);
-                Location loc = highest.getLocation();
-                loc = loc.add(0.5, 3.5, 0.5);
-                Firework firework = (Firework) otherLoc.getWorld().spawnEntity(loc, EntityType.FIREWORK);
-                FireworkMeta meta = (FireworkMeta) itemForKey("SpecialFireworkEffect").getItemMeta();
-                firework.setFireworkMeta(meta);
                 other.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0, true, true, true), true);
             }
             item.subtract(1);
@@ -1304,7 +1319,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 player.teleport(world.getSpawnLocation());
                 continue;
             }
-            if (AFKPlugin.isAfk(player)) {
+            if (!eventMode && AFKPlugin.isAfk(player)) {
                 sp.setSpectator();
                 player.setGameMode(GameMode.SPECTATOR);
                 player.teleport(world.getSpawnLocation());

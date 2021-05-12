@@ -12,7 +12,7 @@ public enum State {
     final long seconds;
 
     State() {
-        this.seconds = 0L;
+        this.seconds = 1L;
     }
 
     State(final long seconds) {

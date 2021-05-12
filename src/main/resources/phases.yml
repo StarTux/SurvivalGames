@@ -1,0 +1,130 @@
+kit:
+- bread;2
+- SpecialCompass
+phases:
+# 0 - Some basic stuff
+- - [0.25, iron_helmet]
+  - [0.25, iron_chestplate]
+  - [0.25, iron_leggings]
+  - [0.25, iron_boots]
+
+  - stone_sword
+  - stone_axe
+
+  - [bow, arrow;16]
+  - [crossbow, arrow;16]
+  - [0.25, shield]
+
+  - cooked_beef;4
+  - bread;4
+
+  - SpecialFirework
+
+# 1 - Add decent stuff
+- - [0.25, iron_helmet]
+  - [0.25, iron_chestplate]
+  - [0.25, iron_leggings]
+  - [0.25, iron_boots]
+
+  - stone_sword
+  - stone_axe
+
+  - [bow, arrow;16]
+  - [crossbow, arrow;16]
+  - [0.25, shield]
+
+  - cooked_beef;4
+  - bread;4
+
+  - SpecialLandMine
+
+# 2 - Iron age
+- - [0.25, iron_helmet]
+  - [0.25, iron_chestplate]
+  - [0.25, iron_leggings]
+  - [0.25, iron_boots]
+
+  - iron_sword
+  - iron_axe
+
+  - [bow, arrow;16]
+  - [0.25, shield]
+
+  - cooked_beef;4
+  - cooked_beef;2
+  - bread;8
+  - bread;10
+
+  - FlameBow
+
+  - SpecialFirework
+
+  - flint_and_steel
+
+  - SpecialLandMine
+
+  - SpeedPotion
+  - SpeedPotion
+
+  - RegenPotion
+  - RegenPotion
+
+  - PoisonPotion
+  - PoisonArrow;4
+
+  - golden_apple
+
+# 3 - Premium items
+- - [0.25, diamond_helmet]
+  - [0.25, diamond_chestplate]
+  - [0.25, diamond_leggings]
+  - [0.25, diamond_boots]
+
+  - diamond_sword
+  - diamond_axe
+
+  - [bow, arrow;16]
+
+  - [0.25, shield]
+
+  - cooked_beef;4
+  - cooked_beef;2
+  - bread;8
+  - bread;10
+
+  - FlameBow
+
+  - ender_pearl;2
+  - ender_pearl;4
+
+  - SpecialFirework
+
+  - flint_and_steel
+  - SpecialLandMine
+
+  - RegenPotion
+  - RegenPotion
+
+  - PoisonPotion
+  - PoisonArrow
+
+  - golden_apple
+  - elytra
+
+- - [0.25, netherite_helmet]
+  - [0.25, netherite_chestplate]
+  - [0.25, netherite_chestplate]
+  - [0.25, netherite_chestplate]
+
+  - [bow, arrow;16]
+  - [crossbow, arrow;16]
+
+  - cooked_beef;4
+  - bread;8
+
+  - golden_apple
+  - elytra
+  - ender_pearl;64
+
+# Endgame
+- - '#item_sets'

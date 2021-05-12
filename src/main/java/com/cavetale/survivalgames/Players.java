@@ -1,12 +1,13 @@
-package com.winthier.minigames.sg;
+package com.cavetale.survivalgames;
 
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 
-public class Players {
+public final class Players {
+    private Players() { }
+
     public static void reset(Player player) {
         player.setGameMode(GameMode.SURVIVAL);
         // flight
@@ -22,8 +23,6 @@ public class Players {
         // exp
         player.setLevel(0);
         player.setExp(0.0f);
-        // scoreboard
-        player.setScoreboard(Bukkit.getServer().getScoreboardManager().getMainScoreboard());
         // time
         player.resetPlayerTime();
         player.resetPlayerWeather();
@@ -35,18 +34,16 @@ public class Players {
         // inventory
         player.getInventory().clear();
         player.getEnderChest().clear();
-        {
+        do {
             ItemStack[] items = player.getInventory().getArmorContents();
             for (int i = 0; i < items.length; ++i) items[i] = null;
             player.getInventory().setArmorContents(items);
-        }
+        } while (false);
         player.getInventory().setHeldItemSlot(0);
         // potion effects
         for (PotionEffect effect : player.getActivePotionEffects()) player.removePotionEffect(effect.getType());
         player.setFireTicks(0);
         // vehicle
         if (player.getVehicle() != null) player.getVehicle().remove();
-        // NoCheatPlus
-        Msg.consoleCommand("ncp removeplayer " + player.getName());
     }
 }

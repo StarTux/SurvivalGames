@@ -1,13 +1,22 @@
+main: com.cavetale.survivalgames.SurvivalGamesPlugin
+
 name: SurvivalGames
 description: SurvivalGames mini game
 authors: [ StarTux ]
 version: 0.1-SNAPSHOT
 api-version: 1.13
 website: https://cavetale.com
-main: com.winthier.minigames.sg.SurvivalGames
-depend: [ SQL, Connect ]
+depend: [ Mytems, Core, GenericEvents, AFK ]
 softdepend: []
+
 commands:
-  colorfall:
-    aliases: [ready, tp, highscore, hi, quit]
-permissions: {}
+  survivalgames:
+    aliases: [sg]
+    permission: survivalgames.admin
+    usage: |-
+      /sg start <world>
+
+permissions:
+  survivalgames.admin:
+    description: Use /sg
+    default: op

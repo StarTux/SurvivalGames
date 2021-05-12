@@ -1,0 +1,336 @@
+SpecialCompass:
+  ==: org.bukkit.inventory.ItemStack
+  type: COMPASS
+  meta:
+    ==: ItemMeta
+    meta-type: UNSPECIFIC
+    display-name: §rFind Enemies
+    lore:
+    - §3This compass will point
+    - §3to your closest enemy.
+    enchants:
+      DURABILITY: 1
+    repair-cost: 3
+SpecialFirework:
+  ==: org.bukkit.inventory.ItemStack
+  type: FIREWORK
+  meta:
+    ==: ItemMeta
+    meta-type: FIREWORK
+    display-name: §rFlare
+    lore:
+    - §3Use this item to give
+    - §3away thelocations of 
+    - §3all your enemies via 
+    - §3a magic firework show.
+    enchants:
+      DURABILITY: 1
+    repair-cost: 3
+SpecialFireworkEffect:
+  ==: org.bukkit.inventory.ItemStack
+  type: FIREWORK
+  amount: 64
+  meta:
+    ==: ItemMeta
+    meta-type: FIREWORK
+    firework-effects:
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 179
+        BLUE: 44
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 44
+        BLUE: 178
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 49
+        BLUE: 44
+        GREEN: 178
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 179
+        BLUE: 44
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 44
+        BLUE: 178
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 49
+        BLUE: 44
+        GREEN: 178
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 179
+        BLUE: 44
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 44
+        BLUE: 178
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 49
+        BLUE: 44
+        GREEN: 178
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 179
+        BLUE: 44
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 44
+        BLUE: 178
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 49
+        BLUE: 44
+        GREEN: 178
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 179
+        BLUE: 44
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 44
+        BLUE: 178
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 49
+        BLUE: 44
+        GREEN: 178
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 179
+        BLUE: 44
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 44
+        BLUE: 178
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 49
+        BLUE: 44
+        GREEN: 178
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 179
+        BLUE: 44
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 44
+        BLUE: 178
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 49
+        BLUE: 44
+        GREEN: 178
+      fade-colors: []
+      type: BALL_LARGE
+    power: 2
+SpecialLandMine:
+  ==: org.bukkit.inventory.ItemStack
+  type: IRON_PLATE
+  meta:
+    ==: ItemMeta
+    meta-type: UNSPECIFIC
+    display-name: §rLand Mine
+    lore:
+    - §3Place this down to
+    - §3lay an explosive trap.
+FlintAndSteel:
+  ==: org.bukkit.inventory.ItemStack
+  type: FLINT_AND_STEEL
+SpecialFireworkVictory:
+  ==: org.bukkit.inventory.ItemStack
+  type: FIREWORK
+  amount: 64
+  meta:
+    ==: ItemMeta
+    meta-type: FIREWORK
+    firework-effects:
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 179
+        BLUE: 44
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 44
+        BLUE: 178
+        GREEN: 49
+      fade-colors: []
+      type: BALL_LARGE
+    - ==: Firework
+      flicker: false
+      trail: false
+      colors:
+      - ==: Color
+        RED: 49
+        BLUE: 44
+        GREEN: 178
+      fade-colors: []
+      type: BALL_LARGE
+    power: 1
+RegenPotion:
+  ==: org.bukkit.inventory.ItemStack
+  type: POTION
+  meta:
+    ==: ItemMeta
+    meta-type: POTION
+    potion-type: minecraft:regeneration
+FlameBow:
+  ==: org.bukkit.inventory.ItemStack
+  type: BOW
+  meta:
+    ==: ItemMeta
+    meta-type: UNSPECIFIC
+    enchants:
+      ARROW_FIRE: 1
+SpeedPotion:
+  ==: org.bukkit.inventory.ItemStack
+  type: POTION
+  meta:
+    ==: ItemMeta
+    meta-type: POTION
+    potion-type: minecraft:swiftness
+PoisonPotion:
+  ==: org.bukkit.inventory.ItemStack
+  type: LINGERING_POTION
+  meta:
+    ==: ItemMeta
+    meta-type: POTION
+    potion-type: minecraft:poison
+PoisonArrow:
+  ==: org.bukkit.inventory.ItemStack
+  type: TIPPED_ARROW
+  amount: 2
+  meta:
+    ==: ItemMeta
+    meta-type: POTION
+    potion-type: minecraft:long_poison

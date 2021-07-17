@@ -541,6 +541,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + winnerName + " Survivor Victor");
                 }
             }
+            world.setGameRule(GameRule.NATURAL_REGENERATION, false);
             for (Player player : world.getPlayers()) {
                 player.setGameMode(GameMode.SPECTATOR);
                 if (winnerName != null) {

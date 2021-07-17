@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -50,8 +51,12 @@ import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Skeleton;
+import org.bukkit.entity.Zombie;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
@@ -64,10 +69,10 @@ import org.bukkit.event.block.BlockGrowEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
-import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
+import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
@@ -122,6 +127,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     final List<ItemStack> kitItems = new ArrayList<>();
     final Map<UUID, SurvivalPlayer> survivalPlayers = new HashMap<>();
     private List<String> worldNames;
+    private List<Mob> spawnedMonsters = new ArrayList<>();
     BossBar bossBar;
 
     @Value static final class ChunkCoord {
@@ -353,6 +359,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     private void tick() {
         if (world == null || state == State.IDLE) return;
         long ticks = totalTicks++;
+        spawnedMonsters.removeIf(m -> !m.isValid());
         for (SurvivalPlayer sp : survivalPlayers.values()) {
             if (sp.isPlayer() && sp.isOnline()) {
                 sp.health = sp.getPlayer().getHealth();
@@ -498,6 +505,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
             world.setPVP(false);
             world.setTime(0);
+            for (Mob mob : spawnedMonsters) {
+                mob.remove();
+            }
+            spawnedMonsters.clear();
             break;
         case SUDDEN_DEATH:
             bossBar.setTitle(ChatColor.DARK_RED + "Sudden Death");
@@ -509,6 +520,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 }
             }
             world.setPVP(true);
+            world.getWorldBorder().setCenter(world.getSpawnLocation());
+            world.getWorldBorder().setSize(SUDDEN_DEATH_RADIUS * 2.0);
             break;
         case END:
             bossBar.setTitle(ChatColor.AQUA + "The End");
@@ -525,7 +538,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     }
                 }
                 if (winnerName != null) {
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + winnerName + " Survivor");
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + winnerName + " Survivor Victor");
                 }
             }
             for (Player player : world.getPlayers()) {
@@ -607,11 +620,22 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     State tickFreeForAll(long ticks) {
         long timeLeft = state.seconds * 20 - ticks;
+        long limit = state.seconds * 10L;
         if (timeLeft % 20 == 0) {
             long seconds = timeLeft / 20;
             secondsLeft = seconds;
             double progress = (double) seconds / (double) state.seconds;
             bossBar.setProgress(Math.max(0, Math.min(1, progress)));
+            if (timeLeft < limit) {
+                for (Player player : new ArrayList<>(world.getPlayers())) {
+                    if (getSurvivalPlayer(player).isPlayer()) {
+                        tryToSpawnMob(player);
+                    }
+                }
+            }
+        }
+        if (timeLeft < limit && world.isDayTime()) {
+            world.setTime(world.getTime() + 100L);
         }
         if (restockTicks <= 0) {
             restockTicks = (RESTOCK_SECONDS + (random.nextLong() % RESTOCK_VARIANCE) - (random.nextLong() % RESTOCK_VARIANCE)) * 20;
@@ -623,6 +647,66 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
         if (timeLeft <= 0) return State.COUNTDOWN_SUDDEN_DEATH;
         return null;
+    }
+
+    void tryToSpawnMob(Player player) {
+        if (spawnedMonsters.size() > 100) return;
+        Location loc = player.getLocation();
+        Vector vec = new Vector(random.nextDouble(), 0.0, random.nextDouble());
+        double distance = 24.0 + random.nextDouble() * 24.0;
+        vec = vec.normalize().multiply(distance);
+        loc = loc.add(vec);
+        Block block = loc.getBlock();
+        for (int i = 0; i < 8; i += 1) {
+            if (!block.isEmpty()) break;
+            block = block.getRelative(0, -1, 0);
+        }
+        for (int i = 0; i < 8; i += 1) {
+            if (block.isEmpty()) break;
+            block = block.getRelative(0, 1, 0);
+        }
+        if (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty()) return;
+        if (!block.getRelative(0, -1, 0).isSolid()) return;
+        loc = block.getLocation().add(0.5, 0.0, 0.5);
+        boolean tooClose = false;
+        double exclusionRadiusSq = 24.0 * 24.0;
+        for (Player nearby : world.getPlayers()) {
+            if (!getSurvivalPlayer(player).isPlayer()) continue;
+            if (loc.distanceSquared(nearby.getLocation()) < exclusionRadiusSq) {
+                return;
+            }
+        }
+        int nearbyMobCount = 0;
+        for (Mob nearby : spawnedMonsters) {
+            if (loc.distanceSquared(nearby.getLocation()) < exclusionRadiusSq) {
+                nearbyMobCount += 1;
+                if (nearbyMobCount > 4) return;
+            }
+        }
+        List<EntityType> entityTypes = Arrays.asList(EntityType.ZOMBIE,
+                                                     EntityType.CREEPER,
+                                                     EntityType.SKELETON,
+                                                     EntityType.SPIDER,
+                                                     EntityType.BLAZE,
+                                                     EntityType.DROWNED,
+                                                     EntityType.HOGLIN,
+                                                     EntityType.HUSK,
+                                                     EntityType.STRAY,
+                                                     EntityType.VINDICATOR,
+                                                     EntityType.WITCH,
+                                                     EntityType.WITHER_SKELETON,
+                                                     EntityType.WITHER_SKELETON,
+                                                     EntityType.ZOGLIN,
+                                                     EntityType.ZOMBIE_VILLAGER,
+                                                     EntityType.RAVAGER);
+        EntityType entityType = entityTypes.get(random.nextInt(entityTypes.size()));
+        Mob mob = (Mob) loc.getWorld().spawn(loc, entityType.getEntityClass(), e -> {
+                e.setPersistent(false);
+                if (e instanceof Mob) ((Mob) e).setRemoveWhenFarAway(true);
+                if (e instanceof Zombie) ((Zombie) e).setShouldBurnInDay(false);
+                if (e instanceof Skeleton) ((Skeleton) e).setShouldBurnInDay(false);
+            });
+        spawnedMonsters.add(mob);
     }
 
     State tickCountdownSuddenDeath(long ticks) {
@@ -667,14 +751,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             secondsLeft = seconds;
             double progress = (double) seconds / (double) state.seconds;
             bossBar.setProgress(Math.max(0, Math.min(1, progress)));
-        }
-        if (timeLeft % (20 * 5) == 0) {
-            for (Player player : world.getPlayers()) {
-                Location loc = player.getLocation();
-                // Firework firework = (Firework) loc.getWorld().spawnEntity(loc, EntityType.FIREWORK);
-                // FireworkMeta meta = (FireworkMeta) itemForKey("SpecialFireworkVictory").getItemMeta();
-                // firework.setFireworkMeta(meta);
-            }
         }
         if (timeLeft <= 0) {
             stopGame();
@@ -885,7 +961,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     void makeImmobile(Player player, Location location) {
-        if (!player.getLocation().getWorld().equals(location.getWorld()) || player.getLocation().distanceSquared(location) > 4.0) {
+        if (!player.getLocation().getWorld().equals(location.getWorld()) || player.getLocation().distanceSquared(location) > 0.5) {
             player.teleport(location);
             getLogger().info("Teleported " + player.getName() + " to their spawn location");
         }
@@ -1140,7 +1216,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         switch (event.getAction()) {
         case RIGHT_CLICK_AIR:
         case RIGHT_CLICK_BLOCK:
-            if (event.hasBlock() && state != State.LOOTING && state != State.FREE_FOR_ALL) {
+            if (event.hasBlock() && state != State.LOOTING && state != State.FREE_FOR_ALL && state != State.SUDDEN_DEATH) {
                 event.setCancelled(true);
             }
             onUse(event.getPlayer(), event, event.getItem());
@@ -1190,11 +1266,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onCreatureSpawn(CreatureSpawnEvent event) {
-        event.setCancelled(true);
-    }
-
-    @EventHandler(ignoreCancelled = true)
     public void onEntityPortal(EntityPortalEvent event) {
         event.setCancelled(true);
     }
@@ -1212,20 +1283,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         case IDLE: return;
         case COUNTDOWN:
         case COUNTDOWN_SUDDEN_DEATH:
-            if (event.getFrom().distanceSquared(event.getTo()) > 2.0) {
+            if (event.getFrom().distanceSquared(event.getTo()) > 0.1) {
                 makeImmobile(player, getSurvivalPlayer(player).getSpawnLocation());
                 event.setCancelled(true);
-            }
-            break;
-        case SUDDEN_DEATH:
-            if (player.getLocation().distanceSquared(world.getSpawnLocation()) > SUDDEN_DEATH_RADIUS * SUDDEN_DEATH_RADIUS) {
-                Location safe = sp.getSafeLocation();
-                if (safe == null) safe = sp.getSpawnLocation();
-                player.teleport(safe);
-                player.sendMessage(ChatColor.GREEN + "You cannot leave spawn during Sudden Death");
-                player.sendTitle("", ChatColor.GREEN + "Sudden Death");
-            } else {
-                getSurvivalPlayer(player).setSafeLocation(player.getLocation());
             }
             break;
         default: break;
@@ -1339,6 +1399,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     public void stopGame() {
         if (world == null) return;
+        for (Mob mob : spawnedMonsters) {
+            mob.remove();
+        }
+        spawnedMonsters.clear();
         survivalPlayers.clear();
         for (Player player : world.getPlayers()) {
             if (!player.isPermissionSet("group.streamer") || !player.hasPermission("group.streamer")) {
@@ -1385,6 +1449,15 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                       .append(Component.text(sp.getName(), NamedTextColor.WHITE))
                       .build());
         }
-        event.add(this, Priority.HIGHEST, lines);
+        if (!lines.isEmpty()) {
+            event.add(this, Priority.HIGHEST, lines);
+        }
+    }
+
+    @EventHandler
+    void onEntityTarget(EntityTargetEvent event) {
+        if (spawnedMonsters.contains(event.getTarget())) {
+            event.setCancelled(true);
+        }
     }
 }

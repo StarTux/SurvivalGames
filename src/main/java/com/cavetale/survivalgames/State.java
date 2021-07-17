@@ -5,7 +5,7 @@ public enum State {
     COUNTDOWN(20),
     LOOTING(45),
     FREE_FOR_ALL(60 * 10),
-    COUNTDOWN_SUDDEN_DEATH,
+    COUNTDOWN_SUDDEN_DEATH(10),
     SUDDEN_DEATH,
     END(60);
 

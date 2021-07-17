@@ -522,6 +522,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             world.setPVP(true);
             world.getWorldBorder().setCenter(world.getSpawnLocation());
             world.getWorldBorder().setSize(SUDDEN_DEATH_RADIUS * 2.0);
+            world.setGameRule(GameRule.NATURAL_REGENERATION, false);
             break;
         case END:
             bossBar.setTitle(ChatColor.AQUA + "The End");
@@ -541,7 +542,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + winnerName + " Survivor Victor");
                 }
             }
-            world.setGameRule(GameRule.NATURAL_REGENERATION, false);
             for (Player player : world.getPlayers()) {
                 player.setGameMode(GameMode.SPECTATOR);
                 if (winnerName != null) {

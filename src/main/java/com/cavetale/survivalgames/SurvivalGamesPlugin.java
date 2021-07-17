@@ -737,7 +737,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (ticks > 0 && (ticks % 200) == 0) {
             for (Player player : world.getPlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
-                    player.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 20, 0, true));
+                    player.damage(1.0);
                 }
             }
         }

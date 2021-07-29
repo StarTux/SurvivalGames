@@ -5,7 +5,6 @@ import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
 import com.cavetale.sidebar.PlayerSidebarEvent;
 import com.cavetale.sidebar.Priority;
-import com.winthier.generic_events.PlayerCanDamageEntityEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -1323,17 +1322,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (damager == null) return;
         if (!getSurvivalPlayer(damager).isPlayer()) return;
         getSurvivalPlayer(damagee).setLastDamager(damager.getUniqueId());
-    }
-
-    @EventHandler
-    public void onPlayerCanDamageEntity(PlayerCanDamageEntityEvent event) {
-        switch (state) {
-        case FREE_FOR_ALL:
-        case SUDDEN_DEATH:
-            return;
-        default:
-            event.setCancelled(true);
-        }
     }
 
     @EventHandler

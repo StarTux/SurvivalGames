@@ -25,6 +25,9 @@ import lombok.Setter;
 import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
@@ -225,7 +228,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     void removeWorld(World theWorld) {
         for (Player player : theWorld.getPlayers()) {
             if (!player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation())) {
-                player.kickPlayer("world expired");
+                player.kick(Component.text("Your world expired", NamedTextColor.RED));
             }
         }
         File file = theWorld.getWorldFolder();
@@ -481,8 +484,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setColor(BarColor.RED);
             bossBar.setProgress(1);
             for (Player player : world.getPlayers()) {
-                player.sendTitle("", ChatColor.RED + "Fight!");
-                player.sendMessage(ChatColor.RED + "Fight!");
+                player.showTitle(Title.title(Component.empty(),
+                                             Component.text("Fight!", NamedTextColor.RED)));
+                player.sendMessage(Component.text("Fight!", NamedTextColor.RED));
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 1f, 1f);
             }
             world.setPVP(true);
@@ -544,11 +548,18 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             for (Player player : world.getPlayers()) {
                 player.setGameMode(GameMode.SPECTATOR);
                 if (winnerName != null) {
-                    player.sendMessage(ChatColor.GREEN + winnerName + " wins the game!");
-                    player.sendTitle(ChatColor.GREEN + "" + winnerName, ChatColor.GREEN + "Wins the Game!");
+                    player.sendMessage(Component.text(winnerName + " wins the game!", NamedTextColor.GREEN));
+                    player.showTitle(Title.title(Component.text(winnerName, NamedTextColor.GREEN),
+                                                 Component.text("Wins the Game!", NamedTextColor.GREEN)));
                 } else {
-                    player.sendMessage(ChatColor.GREEN + "Draw! Nobody wins.");
-                    player.sendTitle(ChatColor.RED + "Draw!", ChatColor.RED + "Nobody wins");
+                    player.sendMessage(Component.text("Draw! Nobody wins", NamedTextColor.RED));
+                    player.showTitle(Title.title(Component.text("Draw!", NamedTextColor.RED),
+                                                 Component.text("Nobody wins", NamedTextColor.RED)));
+                }
+                if (winnerName != null) {
+                    getLogger().info(winnerName + " wins the game");
+                } else {
+                    getLogger().info("The game ends in a draw");
                 }
             }
         default: break;
@@ -578,14 +589,18 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setProgress(Math.max(0, Math.min(1, progress)));
             for (Player player : world.getPlayers()) {
                 if (seconds == 0) {
-                    player.sendTitle("" + ChatColor.GREEN + ChatColor.BOLD + "GO!", "");
-                    player.sendMessage(ChatColor.GREEN + "GO!");
+                    player.showTitle(Title.title(Component.text("GO!", NamedTextColor.GREEN, TextDecoration.ITALIC),
+                                                 Component.empty()));
+                    player.sendMessage(Component.text("GO!", NamedTextColor.GREEN, TextDecoration.ITALIC));
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 1f, 1f);
                 } else if (seconds == state.seconds) {
-                    player.sendTitle(ChatColor.GREEN + "Get Ready!", ChatColor.GREEN + "Game starts in " + state.seconds + " seconds");
-                    player.sendMessage(ChatColor.GREEN + "Game starts in " + seconds + " seconds");
+                    player.showTitle(Title.title(Component.text("Get Ready!", NamedTextColor.GREEN),
+                                                 Component.text("Game starts in " + state.seconds + " seconds",
+                                                                NamedTextColor.GREEN)));
+                    player.sendMessage(Component.text("Game starts in " + seconds + " seconds", NamedTextColor.GREEN));
                 } else if (seconds <= 10) {
-                    player.sendTitle("" + ChatColor.GREEN + ChatColor.BOLD + seconds, ChatColor.GREEN + "Game Start");
+                    player.showTitle(Title.title(Component.text(seconds, NamedTextColor.GREEN, TextDecoration.BOLD),
+                                                 Component.text("Game Start", NamedTextColor.GREEN)));
                     player.sendMessage("" + ChatColor.GREEN + seconds);
                     player.playNote(player.getEyeLocation(), Instrument.PIANO, new Note((int) ticks / 20));
                 }
@@ -718,14 +733,17 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setProgress(Math.max(0, Math.min(1, progress)));
             for (Player player : world.getPlayers()) {
                 if (seconds == 0) {
-                    player.sendTitle("", "" + ChatColor.RED + ChatColor.BOLD + "KILL!");
-                    player.sendMessage(ChatColor.GREEN + "GO!");
+                    player.showTitle(Title.title(Component.empty(),
+                                                 Component.text("KILL!", NamedTextColor.RED, TextDecoration.BOLD)));
+                    player.sendMessage(Component.text("KILL!", NamedTextColor.RED, TextDecoration.BOLD));
                 } else if (seconds == state.seconds) {
-                    player.sendTitle(ChatColor.RED + "Get Ready!", ChatColor.RED + "Sudden death in " + state.seconds + " seconds");
-                    player.sendMessage(ChatColor.GREEN + "Game starts in " + seconds + " seconds");
+                    player.showTitle(Title.title(Component.text("Get Ready!", NamedTextColor.RED),
+                                                 Component.text("Sudden death in " + seconds + " seconds", NamedTextColor.RED)));
+                    player.sendMessage(Component.text("Sudden death in " + state.seconds + " seconds", NamedTextColor.RED));
                 } else {
-                    player.sendTitle("" + ChatColor.RED + ChatColor.BOLD + seconds, ChatColor.RED + "Sudden Death");
-                    player.sendMessage("" + ChatColor.GREEN + seconds);
+                    player.showTitle(Title.title(Component.text(seconds, NamedTextColor.RED, TextDecoration.BOLD),
+                                                 Component.text("Sudden Death", NamedTextColor.RED)));
+                    player.sendMessage(Component.text("Sudden Death " + seconds, NamedTextColor.RED));
                 }
             }
         }
@@ -893,11 +911,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 }
             } else if (blockState instanceof Sign) {
                 final Sign sign = (Sign) blockState;
-                String firstLine = sign.getLine(0).toLowerCase();
+                String firstLine = PlainTextComponentSerializer.plainText().serialize(sign.line(0)).toLowerCase();
                 if (firstLine != null && firstLine.startsWith("[") && firstLine.endsWith("]")) {
                     if (firstLine.equals("[credits]")) {
                         for (int i = 1; i < 4; ++i) {
-                            String credit = sign.getLine(i);
+                            String credit = PlainTextComponentSerializer.plainText().serialize(sign.line(i));
                             if (credit != null) credits.add(credit);
                         }
                         blockState.getBlock().setType(Material.AIR);
@@ -910,7 +928,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         blockState.getBlock().setType(Material.AIR);
                     } else if (firstLine.equals("[time]")) {
                         long time = 0;
-                        String arg = sign.getLine(1).toLowerCase();
+                        String arg = PlainTextComponentSerializer.plainText().serialize(sign.line(1)).toLowerCase();
                         if ("day".equals(arg)) {
                             time = 1000;
                         } else if ("night".equals(arg)) {
@@ -921,14 +939,14 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                             time = 18000;
                         } else {
                             try {
-                                time = Long.parseLong(sign.getLine(1));
+                                time = Long.parseLong(PlainTextComponentSerializer.plainText().serialize(sign.line(1)));
                             } catch (NumberFormatException nfe) { }
                         }
                         world.setTime(time);
-                        if ("lock".equalsIgnoreCase(sign.getLine(2))) {
-                            world.setGameRuleValue("doDaylightCycle", "false");
+                        if ("lock".equalsIgnoreCase(PlainTextComponentSerializer.plainText().serialize(sign.line(2)))) {
+                            world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
                         } else {
-                            world.setGameRuleValue("doDaylightCycle", "true");
+                            world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
                         }
                         blockState.getBlock().setType(Material.AIR);
                     }
@@ -1018,7 +1036,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         new BukkitRunnable() {
             @Override public void run() {
                 for (Player player : world.getPlayers()) {
-                    player.sendTitle("", ChatColor.GREEN + "Chests restocked");
+                    player.showTitle(Title.title(Component.empty(),
+                                                 Component.text("Chests restocked", NamedTextColor.GREEN)));
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
                 }
             }
@@ -1190,7 +1209,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (itemForKey("SpecialFirework").isSimilar(item)) {
             for (Player other : world.getPlayers()) {
                 if (other.equals(player) || !getSurvivalPlayer(other).isPlayer()) continue;
-                other.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0, true, true, true), true);
+                other.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0, true, true, true));
             }
             item.subtract(1);
             if (event instanceof Cancellable) ((Cancellable) event).setCancelled(true);

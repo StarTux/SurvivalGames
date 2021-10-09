@@ -1249,13 +1249,20 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         // Score
         Player killer = player.getKiller();
         if (killer != null && !killer.equals(player)) {
-            getSurvivalPlayer(killer).addKills(1);
+            SurvivalPlayer theSurvivalPlayer = getSurvivalPlayer(killer);
+            theSurvivalPlayer.addKills(1);
+            if (theSurvivalPlayer.team != null && theSurvivalPlayer.team != getSurvivalPlayer(player).team) {
+                teams.get(theSurvivalPlayer.team).kills += 1;
+            }
         } else {
             UUID lastDamager = getSurvivalPlayer(player).getLastDamager();
             if (lastDamager != null) {
                 SurvivalPlayer spKiller = getSurvivalPlayer(lastDamager);
                 if (spKiller.isPlayer()) {
-                    getSurvivalPlayer(lastDamager).addKills(1);
+                    spKiller.addKills(1);
+                    if (spKiller.team != null && spKiller.team != getSurvivalPlayer(player).team) {
+                        teams.get(spKiller.team).kills += 1;
+                    }
                 }
             }
         }
@@ -1603,7 +1610,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             Collections.sort(list, (a, b) -> Integer.compare(b.alivePlayers, a.alivePlayers));
             for (TeamScore teamScore : list) {
                 if (teamScore.alivePlayers == 0) {
-                    lines.add(Component.text("0p " + teamScore.team.displayName,
+                    lines.add(Component.text("0\u2665 " + teamScore.team.displayName,
                                              NamedTextColor.DARK_GRAY));
                     continue;
                 }

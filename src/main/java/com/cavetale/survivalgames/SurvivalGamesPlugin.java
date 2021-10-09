@@ -144,6 +144,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     BossBar bossBar;
     protected File saveFile;
     protected SaveTag saveTag;
+    static final List<String> WINNER_TITLES = List.of("Survivor", "Victor", "SurviveTogether", "Arrow", "SpectralArrow");
 
     @Value static final class ChunkCoord {
         int x;
@@ -168,6 +169,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             enter(player);
         }
         load();
+        for (String winnerTitle : WINNER_TITLES) {
+            if (TitlePlugin.getInstance().getTitle(winnerTitle) == null) {
+                getLogger().warning("Title not found: " + winnerTitle);
+            }
+        }
     }
 
     public void onDisable() {
@@ -586,8 +592,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + sp.getName() + " Katniss");
                     }
                     if (sp.winner) {
-                        List<String> titles = List.of("Survivor", "Victor");
-                        String cmd = "titles unlockset " + winnerName + " " + String.join(" ", titles);
+                        String cmd = "titles unlockset " + sp.name + " " + String.join(" ", WINNER_TITLES);
                         getLogger().info("Running command: " + cmd);
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
                     }
@@ -604,9 +609,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         .collect(Collectors.joining(" "));
                     for (Player player : world.getPlayers()) {
                         player.sendMessage(Component.text().color(NamedTextColor.WHITE)
+                                           .append(Component.newline())
                                            .append(Component.text("Team "))
                                            .append(winnerTeam.component)
-                                           .append(Component.text(" wins the game: " + nameString)));
+                                           .append(Component.text(" wins the game: " + nameString))
+                                           .append(Component.newline()));
                         player.showTitle(Title.title(winnerTeam.component,
                                                      Component.text("Wins the Game!", winnerTeam.color)));
                     }

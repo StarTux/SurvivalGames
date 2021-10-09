@@ -1,5 +1,6 @@
 package com.cavetale.survivalgames;
 
+import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import java.util.List;
@@ -33,8 +34,9 @@ public final class SurvivalGamesCommand implements TabExecutor {
         rootNode.addChild("debug").denyTabCompletion()
             .description("Toggle debug mode")
             .senderCaller(this::debug);
-        rootNode.addChild("event").denyTabCompletion()
-            .description("Toggle event mode")
+        rootNode.addChild("event").arguments("true|false")
+            .completers(CommandArgCompleter.list("true", "false"))
+            .description("Set event mode")
             .senderCaller(this::event);
         return this;
     }
@@ -88,9 +90,16 @@ public final class SurvivalGamesCommand implements TabExecutor {
     }
 
     boolean event(CommandSender sender, String[] args) {
-        boolean val = !plugin.isEventMode();
-        plugin.setEventMode(val);
-        sender.sendMessage("Event mode turned " + val);
+        if (args.length > 1) return false;
+        if (args.length >= 1) {
+            try {
+                plugin.saveTag.event = Boolean.parseBoolean(args[0]);
+            } catch (IllegalArgumentException iae) {
+                throw new CommandWarn("Boolean expected: " + args[0]);
+            }
+            plugin.save();
+        }
+        sender.sendMessage("Event mode: " + plugin.saveTag.event);
         return true;
     }
 }

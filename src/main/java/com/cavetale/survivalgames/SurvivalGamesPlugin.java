@@ -1,6 +1,7 @@
 package com.cavetale.survivalgames;
 
 import com.cavetale.afk.AFKPlugin;
+import com.cavetale.core.util.Json;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
 import com.cavetale.sidebar.PlayerSidebarEvent;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,10 +22,12 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -103,7 +107,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     // minigame stuf
     World world;
     @Setter boolean debug = false;
-    @Setter boolean eventMode = false;
     // chunk processing
     Set<ChunkCoord> processedChunks = new HashSet<>();
     // map config from crawler
@@ -121,16 +124,21 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     long restockTicks = 0;
     long secondsLeft;
     int restockPhase = 0;
+    UUID winnerUuid = null;
     String winnerName = null;
+    SurvivalTeam winnerTeam = null;
     @Setter State state = State.IDLE;
     // file config
     final Map<String, ItemStack> stockItems = new HashMap<>();
     final List<List<LootItem>> phaseItems = new ArrayList<>();
     final List<ItemStack> kitItems = new ArrayList<>();
     final Map<UUID, SurvivalPlayer> survivalPlayers = new HashMap<>();
+    final Map<SurvivalTeam, TeamScore> teams = new EnumMap<>(SurvivalTeam.class);
     private List<String> worldNames;
     private List<Mob> spawnedMonsters = new ArrayList<>();
     BossBar bossBar;
+    protected File saveFile;
+    protected SaveTag saveTag;
 
     @Value static final class ChunkCoord {
         int x;
@@ -140,6 +148,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     // Setup event handlers
     @Override @SuppressWarnings("unchecked")
     public void onEnable() {
+        saveFile = new File(getDataFolder(), "save.json");
         getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         getCommand("survivalgames").setExecutor(new SurvivalGamesCommand(this).enable());
@@ -152,12 +161,22 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         for (Player player : Bukkit.getOnlinePlayers()) {
             enter(player);
         }
+        load();
     }
 
     public void onDisable() {
+        save();
         for (Player player : Bukkit.getOnlinePlayers()) {
             exit(player);
         }
+    }
+
+    protected void load() {
+        saveTag = Json.load(saveFile, SaveTag.class, SaveTag::new);
+    }
+
+    protected void save() {
+        Json.save(saveFile, saveTag);
     }
 
     void enter(Player player) {
@@ -391,14 +410,26 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
         State newState = null;
         if (state != State.END) {
-            // Check if only one player is left
             int aliveCount = 0;
-            UUID survivor = null;
-            for (SurvivalPlayer info : survivalPlayers.values()) {
-                if (info.isPlayer()) {
-                    survivor = info.getUuid();
-                    aliveCount += 1;
+            if (saveTag.useTeams) {
+                for (TeamScore teamScore : teams.values()) {
+                    teamScore.alivePlayers = 0;
                 }
+                for (SurvivalPlayer sp : getAlivePlayers()) {
+                    TeamScore teamScore = teams.get(sp.team);
+                    if (teamScore.alivePlayers == 0) aliveCount += 1;
+                    teamScore.alivePlayers += 1;
+                    winnerTeam = sp.team;
+                }
+                if (aliveCount > 1) winnerTeam = null;
+            } else {
+                for (SurvivalPlayer info : survivalPlayers.values()) {
+                    if (info.isPlayer()) {
+                        winnerUuid = info.getUuid();
+                        aliveCount += 1;
+                    }
+                }
+                if (aliveCount > 1) winnerUuid = null;
             }
             if (aliveCount == 2 && !compassesGiven) {
                 compassesGiven = true;
@@ -408,10 +439,16 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     }
                 }
             }
-            if (!debug && aliveCount == 1 && survivor != null) {
-                winnerName = getSurvivalPlayer(survivor).getName();
-                getSurvivalPlayer(survivor).setWinner(true);
-                getSurvivalPlayer(survivor).setEndTime(new Date());
+            if (!debug && saveTag.useTeams && aliveCount == 1 && winnerTeam != null) {
+                if (debug) getLogger().info("Ending because there is 1 team left!");
+                for (SurvivalPlayer sp : survivalPlayers.values()) {
+                    if (sp.team == winnerTeam) sp.winner = true;
+                }
+                newState = State.END;
+            } else if (!debug && !saveTag.useTeams && aliveCount == 1 && winnerUuid != null) {
+                winnerName = getSurvivalPlayer(winnerUuid).getName();
+                getSurvivalPlayer(winnerUuid).setWinner(true);
+                getSurvivalPlayer(winnerUuid).setEndTime(new Date());
                 if (debug) getLogger().info("Ending because there is 1 survivor!");
                 newState = State.END;
             } else if (aliveCount == 0) {
@@ -534,31 +571,60 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             for (Player player : world.getPlayers()) {
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 1f, 1f);
             }
-            if (eventMode) {
+            if (saveTag.event) {
                 for (SurvivalPlayer sp : survivalPlayers.values()) {
                     if (sp.didPlay) {
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + sp.getName());
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + sp.getName() + " Katniss");
                     }
-                }
-                if (winnerName != null) {
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + winnerName + " Survivor Victor");
+                    if (sp.winner) {
+                        List<String> titles = List.of("Survivor", "Victor");
+                        String cmd = "titles unlockset " + winnerName + " " + String.join(" ", titles);
+                        getLogger().info("Running command: " + cmd);
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                    }
                 }
             }
             for (Player player : world.getPlayers()) {
                 player.setGameMode(GameMode.SPECTATOR);
-                if (winnerName != null) {
-                    player.sendMessage(Component.text(winnerName + " wins the game!", NamedTextColor.GREEN));
-                    player.showTitle(Title.title(Component.text(winnerName, NamedTextColor.GREEN),
-                                                 Component.text("Wins the Game!", NamedTextColor.GREEN)));
+            }
+            if (saveTag.useTeams) {
+                if (winnerTeam != null) {
+                    List<SurvivalPlayer> winners = getWinningPlayers();
+                    String nameString = winners.stream()
+                        .map(SurvivalPlayer::getName)
+                        .collect(Collectors.joining(" "));
+                    for (Player player : world.getPlayers()) {
+                        player.sendMessage(Component.text().color(NamedTextColor.WHITE)
+                                           .append(Component.text("Team "))
+                                           .append(winnerTeam.component)
+                                           .append(Component.text(" wins the game: " + nameString)));
+                        player.showTitle(Title.title(winnerTeam.component,
+                                                     Component.text("Wins the Game!", winnerTeam.color)));
+                    }
+                    getLogger().info(winnerTeam + " wins the game: " + nameString);
                 } else {
-                    player.sendMessage(Component.text("Draw! Nobody wins", NamedTextColor.RED));
-                    player.showTitle(Title.title(Component.text("Draw!", NamedTextColor.RED),
-                                                 Component.text("Nobody wins", NamedTextColor.RED)));
+                    for (Player player : world.getPlayers()) {
+                        player.sendMessage(Component.text("Draw! Nobody wins", NamedTextColor.RED));
+                        player.showTitle(Title.title(Component.text("Draw!", NamedTextColor.RED),
+                                                     Component.text("Nobody wins", NamedTextColor.RED)));
+                    }
+                    getLogger().info("The game ends in a draw");
                 }
+            } else {
                 if (winnerName != null) {
+                    for (Player player : world.getPlayers()) {
+                        player.sendMessage(Component.text(winnerName + " wins the game!", NamedTextColor.GREEN));
+                        player.showTitle(Title.title(Component.text(winnerName, NamedTextColor.GREEN),
+                                                     Component.text("Wins the Game!", NamedTextColor.GREEN)));
+                    }
                     getLogger().info(winnerName + " wins the game");
                 } else {
+                    for (Player player : world.getPlayers()) {
+                        player.sendMessage(Component.text("Draw! Nobody wins", NamedTextColor.RED));
+                        player.showTitle(Title.title(Component.text("Draw!", NamedTextColor.RED),
+                                                     Component.text("Nobody wins", NamedTextColor.RED)));
+                    }
                     getLogger().info("The game ends in a draw");
                 }
             }
@@ -1373,6 +1439,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         restockTicks = 0;
         restockPhase = 0;
         winnerName = null;
+        winnerUuid = null;
+        winnerTeam = null;
         spawnLocations.clear();
         spawnLocationsRandomized = false;
         spawnLocationIter = 0;
@@ -1380,6 +1448,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         //
         loadWorld(worldName);
         survivalPlayers.clear();
+        teams.clear();
         for (Player player : Bukkit.getOnlinePlayers()) {
             SurvivalPlayer sp = getSurvivalPlayer(player);
             if (player.isPermissionSet("group.streamer") && player.hasPermission("group.streamer")) {
@@ -1388,7 +1457,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 player.teleport(world.getSpawnLocation());
                 continue;
             }
-            if (!eventMode && AFKPlugin.isAfk(player)) {
+            if (!saveTag.event && AFKPlugin.isAfk(player)) {
                 sp.setSpectator();
                 player.setGameMode(GameMode.SPECTATOR);
                 player.teleport(world.getSpawnLocation());
@@ -1401,6 +1470,18 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             Players.reset(player);
             player.setGameMode(GameMode.SURVIVAL);
             makeImmobile(player, sp.getSpawnLocation());
+        }
+        if (saveTag.useTeams) {
+            int teamCount = Math.max(2, Math.min(SurvivalTeam.values().length, survivalPlayers.size() / 5));
+            List<SurvivalPlayer> spList = getAlivePlayers();
+            Collections.shuffle(spList, random);
+            for (int i = 0; i < spList.size(); i += 1) {
+                spList.get(i).team = SurvivalTeam.values()[i % teamCount];
+            }
+            for (int i = 0; i < teamCount; i += 1) {
+                SurvivalTeam team = SurvivalTeam.values()[i];
+                teams.put(team, new TeamScore(team));
+            }
         }
         state = State.COUNTDOWN;
         onStateChange(state, state);
@@ -1428,35 +1509,65 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     @EventHandler
     void onPlayerSidebar(PlayerSidebarEvent event) {
         if (state == State.IDLE) return;
-        List<SurvivalPlayer> list = new ArrayList<>(survivalPlayers.values());
-        list.removeIf(i -> !i.isPlayer());
-        Collections.sort(list, (b, a) -> Integer.compare(a.kills, b.kills));
         List<Component> lines = new ArrayList<>();
-        if (winnerName != null) {
+        SurvivalPlayer theSurvivalPlayer = getSurvivalPlayer(event.getPlayer());
+        if (theSurvivalPlayer.didPlay) {
+            if (theSurvivalPlayer.team != null) {
+                lines.add(Component.text("Your Team ", NamedTextColor.GRAY)
+                          .append(theSurvivalPlayer.team.component));
+            }
+        }
+        if (!saveTag.useTeams && winnerName != null) {
             lines.add(Component.text()
-                      .append(Component.text("Winner", NamedTextColor.GRAY))
-                      .append(Component.space())
+                      .append(Component.text("Winner ", NamedTextColor.GRAY))
                       .append(Component.text(winnerName, NamedTextColor.GOLD))
+                      .build());
+        } else if (saveTag.useTeams && winnerTeam != null) {
+            lines.add(Component.text()
+                      .append(Component.text("Winner ", NamedTextColor.GRAY))
+                      .append(winnerTeam.component)
                       .build());
         }
         if (secondsLeft > 0) {
             long m = secondsLeft / 60;
             long s = secondsLeft % 60;
             lines.add(Component.text()
-                      .append(Component.text("Time", NamedTextColor.GRAY))
-                      .append(Component.space())
+                      .append(Component.text("Time ", NamedTextColor.GRAY))
                       .append(Component.text(m + "m " + s + "s", NamedTextColor.WHITE))
                       .build());
         }
-        for (SurvivalPlayer sp : list) {
-            int hearts = (int) Math.round(sp.health);
-            lines.add(Component.text()
-                      .append(Component.text("" + sp.kills, NamedTextColor.DARK_RED))
-                      .append(Component.space())
-                      .append(Component.text(hearts + "\u2665", NamedTextColor.RED))
-                      .append(Component.space())
-                      .append(Component.text(sp.getName(), NamedTextColor.WHITE))
-                      .build());
+        if (saveTag.useTeams) {
+            List<TeamScore> list = new ArrayList<>(teams.values());
+            Collections.sort(list, (a, b) -> Integer.compare(b.alivePlayers, a.alivePlayers));
+            for (TeamScore teamScore : list) {
+                if (teamScore.alivePlayers == 0) {
+                    lines.add(Component.text("0p " + teamScore.team.displayName,
+                                             NamedTextColor.DARK_GRAY));
+                    continue;
+                }
+                lines.add(Component.join(JoinConfiguration.noSeparators(),
+                                         Component.text(teamScore.alivePlayers + "\u2665 ", NamedTextColor.RED),
+                                         Component.text(teamScore.kills + "k ", NamedTextColor.YELLOW),
+                                         teamScore.team.component));
+            }
+        } else {
+            List<SurvivalPlayer> list = new ArrayList<>(survivalPlayers.values());
+            list.removeIf(i -> !i.isPlayer());
+            Collections.sort(list, (b, a) -> Integer.compare(a.kills, b.kills));
+            for (SurvivalPlayer sp : list) {
+                int hearts = (int) Math.round(sp.health);
+                Player player = sp.getPlayer();
+                Component displayName = player != null
+                    ? player.displayName()
+                    : Component.text(sp.getName(), NamedTextColor.WHITE);
+                lines.add(Component.text()
+                          .append(Component.text("" + sp.kills, NamedTextColor.DARK_RED))
+                          .append(Component.space())
+                          .append(Component.text(hearts + "\u2665", NamedTextColor.RED))
+                          .append(Component.space())
+                          .append(displayName)
+                          .build());
+            }
         }
         if (!lines.isEmpty()) {
             event.add(this, Priority.HIGHEST, lines);
@@ -1468,5 +1579,33 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (spawnedMonsters.contains(event.getTarget())) {
             event.setCancelled(true);
         }
+    }
+
+    public List<SurvivalPlayer> getAlivePlayers() {
+        List<SurvivalPlayer> result = new ArrayList<>();
+        for (SurvivalPlayer sp : survivalPlayers.values()) {
+            if (sp.isPlayer()) result.add(sp);
+        }
+        return result;
+    }
+
+    public List<SurvivalPlayer> getAlivePlayers(SurvivalTeam team) {
+        List<SurvivalPlayer> result = new ArrayList<>();
+        for (SurvivalPlayer sp : survivalPlayers.values()) {
+            if (!sp.isPlayer()) continue;
+            if (sp.team != team) continue;
+            result.add(sp);
+        }
+        return result;
+    }
+
+    public List<SurvivalPlayer> getWinningPlayers() {
+        List<SurvivalPlayer> result = new ArrayList<>();
+        for (SurvivalPlayer sp : survivalPlayers.values()) {
+            if (!sp.didPlay) continue;
+            if (!sp.winner) continue;
+            result.add(sp);
+        }
+        return result;
     }
 }

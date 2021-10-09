@@ -25,6 +25,7 @@ public final class SurvivalPlayer {
     protected boolean winner = false;
     protected boolean didPlay = false;
     protected double health;
+    protected SurvivalTeam team;
 
     boolean isPlayer() {
         return type == Type.PLAYER;

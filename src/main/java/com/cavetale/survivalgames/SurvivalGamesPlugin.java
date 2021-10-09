@@ -409,6 +409,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 double dist = Double.MAX_VALUE;
                 for (Player target : world.getPlayers()) {
                     if (!player.equals(target) && getSurvivalPlayer(target).isPlayer()) {
+                        if (saveTag.useTeams && getSurvivalPlayer(player).team == getSurvivalPlayer(target).team) {
+                            continue;
+                        }
                         Location targetLoc = target.getLocation();
                         double newDist = playerLoc.distanceSquared(targetLoc);
                         if (newDist < dist) {

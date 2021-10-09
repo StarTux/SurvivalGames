@@ -8,17 +8,28 @@ description: SurvivalGames mini game
 authors: [ StarTux ]
 website: https://cavetale.com
 
-depend: [Mytems, Core, AFK, Title]
+depend: [Mytems, Core, AFK, Title, Sidebar]
 softdepend: []
 
 commands:
+
   survivalgames:
     aliases: [sg]
     permission: survivalgames.admin
     usage: |-
       /sg start <world>
 
+  teammsg:
+    aliases: [team, t]
+    usage: /t <message> talk with your team
+    permission: survivalgames.team
+
 permissions:
+
   survivalgames.admin:
     description: Use /sg
     default: op
+
+  survivalgames.team:
+    description: Use /t
+    default: true

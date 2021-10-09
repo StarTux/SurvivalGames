@@ -6,6 +6,8 @@ import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
 import com.cavetale.sidebar.PlayerSidebarEvent;
 import com.cavetale.sidebar.Priority;
+import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
+import com.winthier.title.TitlePlugin;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -75,6 +77,7 @@ import org.bukkit.event.block.BlockGrowEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
@@ -152,6 +155,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         getCommand("survivalgames").setExecutor(new SurvivalGamesCommand(this).enable());
+        getCommand("teammsg").setExecutor(new TeamCommand(this));
         bossBar = Bukkit.createBossBar("Survival Games", BarColor.RED, BarStyle.SOLID);
         try {
             loadConfigFiles();
@@ -1383,6 +1387,18 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
     }
 
+    private Player getPlayerDamager(Entity damager) {
+        if (damager instanceof Player) {
+            return (Player) damager;
+        } else if (damager instanceof Projectile) {
+            Projectile projectile = (Projectile) damager;
+            if (projectile.getShooter() instanceof Player) {
+                return (Player) projectile.getShooter();
+            }
+        }
+        return null;
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         switch (event.getEntity().getType()) {
@@ -1395,18 +1411,45 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (!(event.getEntity() instanceof Player)) return;
         Player damagee = (Player) event.getEntity();
         if (!getSurvivalPlayer(damagee).isPlayer()) return;
-        Player damager = null;
         Entity entity = event.getDamager();
-        if (entity instanceof Player) {
-            damager = (Player) damager;
-        } else if (entity instanceof Projectile && ((Projectile) entity).getShooter() instanceof Player) {
-            damager = (Player) ((Projectile) entity).getShooter();
-        } else {
+        Player damager = getPlayerDamager(entity);
+        if (damager == null) return;
+        if (!getSurvivalPlayer(damager).isPlayer()) {
+            event.setCancelled(true);
             return;
         }
-        if (damager == null) return;
-        if (!getSurvivalPlayer(damager).isPlayer()) return;
+        if (saveTag.useTeams && getSurvivalPlayer(damager).team == getSurvivalPlayer(damagee).team) {
+            event.setCancelled(true);
+            return;
+        }
         getSurvivalPlayer(damagee).setLastDamager(damager.getUniqueId());
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onEntityCombustByEntity(EntityCombustByEntityEvent event) {
+        Player damager = getPlayerDamager(event.getCombuster());
+        if (damager == null) return;
+        if (event.getEntity() instanceof Player) {
+            Player damagee = (Player) event.getEntity();
+            if (saveTag.useTeams && getSurvivalPlayer(damager).team == getSurvivalPlayer(damagee).team) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onProjectileCollide(ProjectileCollideEvent event) {
+        Projectile projectile = event.getEntity();
+        Player shooter = getPlayerDamager(projectile);
+        if (shooter == null) return;
+        if (event.getCollidedWith() instanceof Player) {
+            Player target = (Player) event.getCollidedWith();
+            if (saveTag.useTeams && getSurvivalPlayer(shooter).team == getSurvivalPlayer(target).team) {
+                event.setCancelled(true);
+                return;
+            }
+        }
     }
 
     @EventHandler
@@ -1476,7 +1519,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             List<SurvivalPlayer> spList = getAlivePlayers();
             Collections.shuffle(spList, random);
             for (int i = 0; i < spList.size(); i += 1) {
-                spList.get(i).team = SurvivalTeam.values()[i % teamCount];
+                SurvivalPlayer thePlayer = spList.get(i);
+                SurvivalTeam theTeam = SurvivalTeam.values()[i % teamCount];
+                thePlayer.team = theTeam;
+                TitlePlugin.getInstance().setColor(thePlayer.getPlayer(), theTeam.color);
             }
             for (int i = 0; i < teamCount; i += 1) {
                 SurvivalTeam team = SurvivalTeam.values()[i];
@@ -1497,6 +1543,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         for (Player player : world.getPlayers()) {
             if (!player.isPermissionSet("group.streamer") || !player.hasPermission("group.streamer")) {
                 Players.reset(player);
+                TitlePlugin.getInstance().setColor(player, null);
                 player.setGameMode(GameMode.ADVENTURE);
             }
             player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
@@ -1515,6 +1562,21 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             if (theSurvivalPlayer.team != null) {
                 lines.add(Component.text("Your Team ", NamedTextColor.GRAY)
                           .append(theSurvivalPlayer.team.component));
+                List<SurvivalPlayer> teamPlayers = getAlivePlayers(theSurvivalPlayer.team);
+                Collections.sort(teamPlayers, (a, b) -> Integer.compare(b.kills, a.kills));
+                for (SurvivalPlayer sp : teamPlayers) {
+                    int hearts = (int) Math.round(sp.health);
+                    Player player = sp.getPlayer();
+                    lines.add(Component.text()
+                              .append(Component.text("" + sp.kills, NamedTextColor.DARK_RED))
+                              .append(Component.space())
+                              .append(Component.text(hearts + "\u2665", NamedTextColor.RED))
+                              .append(Component.space())
+                              .append(player != null && sp.isPlayer()
+                                      ? player.displayName()
+                                      : Component.text(sp.name, NamedTextColor.GRAY))
+                              .build());
+                }
             }
         }
         if (!saveTag.useTeams && winnerName != null) {
@@ -1593,6 +1655,15 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         List<SurvivalPlayer> result = new ArrayList<>();
         for (SurvivalPlayer sp : survivalPlayers.values()) {
             if (!sp.isPlayer()) continue;
+            if (sp.team != team) continue;
+            result.add(sp);
+        }
+        return result;
+    }
+
+    public List<SurvivalPlayer> getPlayers(SurvivalTeam team) {
+        List<SurvivalPlayer> result = new ArrayList<>();
+        for (SurvivalPlayer sp : survivalPlayers.values()) {
             if (sp.team != team) continue;
             result.add(sp);
         }

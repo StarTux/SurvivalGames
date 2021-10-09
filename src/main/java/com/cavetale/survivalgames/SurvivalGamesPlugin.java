@@ -674,7 +674,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     player.showTitle(Title.title(Component.text(seconds, NamedTextColor.GREEN, TextDecoration.BOLD),
                                                  Component.text("Game Start", NamedTextColor.GREEN)));
                     player.sendMessage("" + ChatColor.GREEN + seconds);
-                    player.playNote(player.getEyeLocation(), Instrument.PIANO, new Note((int) ticks / 20));
+                    if (seconds >= 0 && seconds <= 24) {
+                        player.playNote(player.getEyeLocation(), Instrument.PIANO, new Note(24 - (int) seconds));
+                    }
                 }
                 SurvivalPlayer sp = getSurvivalPlayer(player);
                 if (sp.isPlayer()) {

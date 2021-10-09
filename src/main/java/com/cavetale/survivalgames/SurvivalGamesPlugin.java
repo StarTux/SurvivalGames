@@ -503,6 +503,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                                 player.getInventory().addItem(kitItem.clone());
                             }
                         }
+                        player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 20 * (int) State.COUNTDOWN.seconds,
+                                                                0, true, true, true));
                     }
                 }
             }
@@ -1286,6 +1288,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (itemForKey("SpecialFirework").isSimilar(item)) {
             for (Player other : world.getPlayers()) {
                 if (other.equals(player) || !getSurvivalPlayer(other).isPlayer()) continue;
+                if (saveTag.useTeams && getSurvivalPlayer(player).team == getSurvivalPlayer(other).team) {
+                    continue;
+                }
                 other.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0, true, true, true));
             }
             item.subtract(1);

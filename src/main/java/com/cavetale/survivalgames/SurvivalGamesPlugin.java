@@ -1609,7 +1609,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 }
                 lines.add(Component.join(JoinConfiguration.noSeparators(),
                                          Component.text(teamScore.alivePlayers + "\u2665 ", NamedTextColor.RED),
-                                         Component.text(teamScore.kills + "k ", NamedTextColor.YELLOW),
+                                         Component.text(teamScore.kills + " ", NamedTextColor.DARK_RED),
                                          teamScore.team.component));
             }
         } else {

@@ -49,6 +49,7 @@ import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.WorldType;
+import org.bukkit.block.Barrel;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
@@ -94,6 +95,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
@@ -968,13 +970,13 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (processedChunks.contains(cc)) return;
         processedChunks.add(cc);
         for (BlockState blockState : chunk.getTileEntities()) {
-            if (blockState instanceof Chest) {
+            if (blockState instanceof Chest || blockState instanceof Barrel) {
                 Block block = blockState.getBlock();
                 if (restockChests.contains(block)) {
                     getLogger().warning(String.format("Duplicate chest scanned at %d,%d,%d", block.getX(), block.getY(), block.getZ()));
                 } else {
                     try {
-                        ((Chest) blockState).getInventory().clear();
+                        ((InventoryHolder) blockState).getInventory().clear();
                     } catch (NullPointerException npe) {
                         npe.printStackTrace();
                     }
@@ -1120,8 +1122,13 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     boolean stockBlock(Block block) {
         BlockState blockState = block.getState();
-        if (!(blockState instanceof Chest)) return false;
-        stockChest(((Chest) blockState).getBlockInventory());
+        if (blockState instanceof Chest) {
+            stockChest(((Chest) blockState).getBlockInventory());
+            return true;
+        } else if (blockState instanceof Barrel) {
+            stockChest(((Barrel) blockState).getInventory());
+            return true;
+        }
         return false;
     }
 

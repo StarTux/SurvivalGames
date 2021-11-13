@@ -2,7 +2,7 @@ package com.cavetale.survivalgames;
 
 public enum State {
     IDLE,
-    COUNTDOWN(30),
+    COUNTDOWN(60),
     LOOTING(45),
     FREE_FOR_ALL(60 * 8),
     COUNTDOWN_SUDDEN_DEATH(10),

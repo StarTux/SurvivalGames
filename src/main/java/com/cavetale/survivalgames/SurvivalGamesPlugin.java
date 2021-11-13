@@ -541,7 +541,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 player.showTitle(Title.title(Component.empty(),
                                              Component.text("Fight!", NamedTextColor.RED)));
                 player.sendMessage(Component.text("Fight!", NamedTextColor.RED));
-                player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 1f, 1f);
+                player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 0.5f, 1f);
             }
             world.setPVP(true);
             break;
@@ -553,7 +553,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 SurvivalPlayer sp = getSurvivalPlayer(player);
                 if (sp.isPlayer()) {
                     makeImmobile(player, getSurvivalPlayer(player).getSpawnLocation());
-                    player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 1f);
+                    player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 1f);
                 } else if (sp.getSpawnLocation() != null) {
                     player.teleport(sp.getSpawnLocation());
                 } else {
@@ -586,7 +586,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setColor(BarColor.BLUE);
             bossBar.setProgress(1);
             for (Player player : world.getPlayers()) {
-                player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 1f, 1f);
+                player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 0.5f, 1f);
             }
             if (saveTag.event) {
                 for (SurvivalPlayer sp : survivalPlayers.values()) {
@@ -676,7 +676,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     player.showTitle(Title.title(Component.text("GO!", NamedTextColor.GREEN, TextDecoration.ITALIC),
                                                  Component.empty()));
                     player.sendMessage(Component.text("GO!", NamedTextColor.GREEN, TextDecoration.ITALIC));
-                    player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 1f, 1f);
+                    player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 0.5f, 1f);
                 } else if (seconds == state.seconds) {
                     player.showTitle(Title.title(Component.text("Get Ready!", NamedTextColor.GREEN),
                                                  Component.text("Game starts in " + state.seconds + " seconds",
@@ -1123,7 +1123,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 for (Player player : world.getPlayers()) {
                     player.showTitle(Title.title(Component.empty(),
                                                  Component.text("Chests restocked", NamedTextColor.GREEN)));
-                    player.playSound(player.getEyeLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+                    player.playSound(player.getEyeLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1f);
                 }
             }
         }.runTaskLater(this, 20 * 3);
@@ -1314,7 +1314,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             item.subtract(1);
             if (event instanceof Cancellable) ((Cancellable) event).setCancelled(true);
             player.sendMessage(ChatColor.GREEN + "Your enemies have been revealed!");
-            player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1f, 1f);
+            player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 0.5f, 1f);
         }
     }
 

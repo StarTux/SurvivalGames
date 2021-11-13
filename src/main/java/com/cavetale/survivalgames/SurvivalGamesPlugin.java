@@ -798,8 +798,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                                                      EntityType.WITHER_SKELETON,
                                                      EntityType.WITHER_SKELETON,
                                                      EntityType.ZOGLIN,
-                                                     EntityType.ZOMBIE_VILLAGER,
-                                                     EntityType.RAVAGER);
+                                                     EntityType.ZOMBIE_VILLAGER);
         EntityType entityType = entityTypes.get(random.nextInt(entityTypes.size()));
         Mob mob = (Mob) loc.getWorld().spawn(loc, entityType.getEntityClass(), e -> {
                 e.setPersistent(false);

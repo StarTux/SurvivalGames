@@ -1,6 +1,7 @@
 package com.cavetale.survivalgames;
 
 import com.cavetale.afk.AFKPlugin;
+import com.cavetale.core.event.player.PlayerTeamQuery;
 import com.cavetale.core.util.Json;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
@@ -158,7 +159,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         getCommand("survivalgames").setExecutor(new SurvivalGamesCommand(this).enable());
-        getCommand("teammsg").setExecutor(new TeamCommand(this));
         bossBar = Bukkit.createBossBar("Survival Games", BarColor.RED, BarStyle.SOLID);
         try {
             loadConfigFiles();
@@ -1709,5 +1709,14 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             result.add(sp);
         }
         return result;
+    }
+
+    @EventHandler
+    void onPlayerTeam(PlayerTeamQuery query) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            SurvivalPlayer sp = getSurvivalPlayer(player);
+            if (sp == null || sp.team == null) continue;
+            query.setTeam(player, sp.team.queryTeam);
+        }
     }
 }

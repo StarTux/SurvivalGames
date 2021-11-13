@@ -19,11 +19,6 @@ commands:
     usage: |-
       /sg start <world>
 
-  teammsg:
-    aliases: [team, t]
-    usage: /t <message> talk with your team
-    permission: survivalgames.team
-
 permissions:
 
   survivalgames.admin:

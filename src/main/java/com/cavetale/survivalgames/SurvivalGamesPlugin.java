@@ -314,6 +314,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
         world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
         world.setGameRule(GameRule.NATURAL_REGENERATION, true);
+        world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
+        world.setGameRule(GameRule.KEEP_INVENTORY, false);
         world.setStorm(false);
         world.setThundering(false);
         processChunk(world.getSpawnLocation().getChunk());

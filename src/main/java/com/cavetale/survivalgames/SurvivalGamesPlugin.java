@@ -515,6 +515,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                             for (ItemStack kitItem : kitItems) {
                                 player.getInventory().addItem(kitItem.clone());
                             }
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + player.getName());
                         }
                         player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 20 * (int) State.COUNTDOWN.seconds,
                                                                 0, true, true, true));

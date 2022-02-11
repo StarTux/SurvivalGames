@@ -361,7 +361,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         if (key.startsWith("#")) {
                             MytemsTag mytemsTag = MytemsTag.of(key.substring(1));
                             if (mytemsTag != null) {
-                                for (Mytems mytems : mytemsTag.toList()) {
+                                for (Mytems mytems : mytemsTag.getMytems()) {
                                     LootItem lootItem2 = new LootItem();
                                     lootItem2.items.add(mytems.createItemStack());
                                     phaseList.add(lootItem2);

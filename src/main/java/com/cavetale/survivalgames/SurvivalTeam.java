@@ -8,8 +8,8 @@ public enum SurvivalTeam {
     RED("Red", NamedTextColor.RED),
     BLUE("Blue", NamedTextColor.BLUE),
     GREEN("Green", NamedTextColor.GREEN),
-    AQUA("Aqua", NamedTextColor.AQUA),
-    PURPLE("Purple", NamedTextColor.LIGHT_PURPLE),
+    // AQUA("Aqua", NamedTextColor.AQUA),
+    // PURPLE("Purple", NamedTextColor.LIGHT_PURPLE),
     GOLD("Gold", NamedTextColor.GOLD);
 
     public final String key;

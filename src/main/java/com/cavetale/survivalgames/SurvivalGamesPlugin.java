@@ -1641,10 +1641,23 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                                              NamedTextColor.DARK_GRAY));
                     continue;
                 }
+                Component teamDisplayName = null;
+                if (teamScore.alivePlayers == 1) {
+                    List<SurvivalPlayer> teamPlayers = getAlivePlayers(teamScore.team);
+                    if (teamPlayers.size() >= 1) {
+                        Player player = teamPlayers.get(0).getPlayer();
+                        if (player != null) {
+                            teamDisplayName = player.displayName().color(teamScore.team.color);
+                        }
+                    }
+                }
+                if (teamDisplayName == null) {
+                    teamDisplayName = teamScore.team.component;
+                }
                 lines.add(Component.join(JoinConfiguration.noSeparators(),
                                          Component.text(teamScore.alivePlayers + "\u2665 ", NamedTextColor.RED),
                                          Component.text(teamScore.kills + " ", NamedTextColor.DARK_RED),
-                                         teamScore.team.component));
+                                         teamDisplayName));
             }
         } else {
             List<SurvivalPlayer> list = new ArrayList<>(survivalPlayers.values());

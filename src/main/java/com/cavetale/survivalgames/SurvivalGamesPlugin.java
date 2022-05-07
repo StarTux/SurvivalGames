@@ -2,9 +2,15 @@ package com.cavetale.survivalgames;
 
 import com.cavetale.afk.AFKPlugin;
 import com.cavetale.core.event.player.PlayerTeamQuery;
+import com.cavetale.core.font.Unicode;
+import com.cavetale.core.font.VanillaItems;
 import com.cavetale.core.util.Json;
+import com.cavetale.fam.trophy.SQLTrophy;
+import com.cavetale.fam.trophy.Trophies;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
+import com.cavetale.mytems.item.font.Glyph;
+import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.cavetale.sidebar.PlayerSidebarEvent;
 import com.cavetale.sidebar.Priority;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
@@ -30,9 +36,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.JoinConfiguration;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
@@ -104,6 +107,12 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
+import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.space;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
+import static net.kyori.adventure.text.format.TextDecoration.*;
 
 @Getter
 public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
@@ -146,6 +155,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     protected File saveFile;
     protected SaveTag saveTag;
     static final List<String> WINNER_TITLES = List.of("Survivor", "Victor", "SurviveTogether", "Arrow", "SpectralArrow");
+    protected List<Highscore> highscore = new ArrayList<>();
+    private static final Component TITLE = text("Survival Games", DARK_RED, BOLD);
 
     @Value static final class ChunkCoord {
         int x;
@@ -174,6 +185,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 getLogger().warning("Title not found: " + winnerTitle);
             }
         }
+        computeHighscore();
     }
 
     public void onDisable() {
@@ -259,7 +271,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     void removeWorld(World theWorld) {
         for (Player player : theWorld.getPlayers()) {
             if (!player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation())) {
-                player.kick(Component.text("Your world expired", NamedTextColor.RED));
+                player.kick(text("Your world expired", RED));
             }
         }
         File file = theWorld.getWorldFolder();
@@ -543,8 +555,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setProgress(1);
             for (Player player : world.getPlayers()) {
                 player.showTitle(Title.title(Component.empty(),
-                                             Component.text("Fight!", NamedTextColor.RED)));
-                player.sendMessage(Component.text("Fight!", NamedTextColor.RED));
+                                             text("Fight!", RED)));
+                player.sendMessage(text("Fight!", RED));
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 0.5f, 1f);
             }
             world.setPVP(true);
@@ -615,37 +627,37 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         .map(SurvivalPlayer::getName)
                         .collect(Collectors.joining(" "));
                     for (Player player : world.getPlayers()) {
-                        player.sendMessage(Component.text().color(NamedTextColor.WHITE)
+                        player.sendMessage(text().color(WHITE)
                                            .append(Component.newline())
-                                           .append(Component.text("Team "))
+                                           .append(text("Team "))
                                            .append(winnerTeam.component)
-                                           .append(Component.text(" wins the game: " + nameString))
+                                           .append(text(" wins the game: " + nameString))
                                            .append(Component.newline()));
                         player.showTitle(Title.title(winnerTeam.component,
-                                                     Component.text("Wins the Game!", winnerTeam.color)));
+                                                     text("Wins the Game!", winnerTeam.color)));
                     }
                     getLogger().info(winnerTeam + " wins the game: " + nameString);
                 } else {
                     for (Player player : world.getPlayers()) {
-                        player.sendMessage(Component.text("Draw! Nobody wins", NamedTextColor.RED));
-                        player.showTitle(Title.title(Component.text("Draw!", NamedTextColor.RED),
-                                                     Component.text("Nobody wins", NamedTextColor.RED)));
+                        player.sendMessage(text("Draw! Nobody wins", RED));
+                        player.showTitle(Title.title(text("Draw!", RED),
+                                                     text("Nobody wins", RED)));
                     }
                     getLogger().info("The game ends in a draw");
                 }
             } else {
                 if (winnerName != null) {
                     for (Player player : world.getPlayers()) {
-                        player.sendMessage(Component.text(winnerName + " wins the game!", NamedTextColor.GREEN));
-                        player.showTitle(Title.title(Component.text(winnerName, NamedTextColor.GREEN),
-                                                     Component.text("Wins the Game!", NamedTextColor.GREEN)));
+                        player.sendMessage(text(winnerName + " wins the game!", GREEN));
+                        player.showTitle(Title.title(text(winnerName, GREEN),
+                                                     text("Wins the Game!", GREEN)));
                     }
                     getLogger().info(winnerName + " wins the game");
                 } else {
                     for (Player player : world.getPlayers()) {
-                        player.sendMessage(Component.text("Draw! Nobody wins", NamedTextColor.RED));
-                        player.showTitle(Title.title(Component.text("Draw!", NamedTextColor.RED),
-                                                     Component.text("Nobody wins", NamedTextColor.RED)));
+                        player.sendMessage(text("Draw! Nobody wins", RED));
+                        player.showTitle(Title.title(text("Draw!", RED),
+                                                     text("Nobody wins", RED)));
                     }
                     getLogger().info("The game ends in a draw");
                 }
@@ -677,18 +689,18 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             bossBar.setProgress(Math.max(0, Math.min(1, progress)));
             for (Player player : world.getPlayers()) {
                 if (seconds == 0) {
-                    player.showTitle(Title.title(Component.text("GO!", NamedTextColor.GREEN, TextDecoration.ITALIC),
+                    player.showTitle(Title.title(text("GO!", GREEN, ITALIC),
                                                  Component.empty()));
-                    player.sendMessage(Component.text("GO!", NamedTextColor.GREEN, TextDecoration.ITALIC));
+                    player.sendMessage(text("GO!", GREEN, ITALIC));
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 0.5f, 1f);
                 } else if (seconds == state.seconds) {
-                    player.showTitle(Title.title(Component.text("Get Ready!", NamedTextColor.GREEN),
-                                                 Component.text("Game starts in " + state.seconds + " seconds",
-                                                                NamedTextColor.GREEN)));
-                    player.sendMessage(Component.text("Game starts in " + seconds + " seconds", NamedTextColor.GREEN));
+                    player.showTitle(Title.title(text("Get Ready!", GREEN),
+                                                 text("Game starts in " + state.seconds + " seconds",
+                                                                GREEN)));
+                    player.sendMessage(text("Game starts in " + seconds + " seconds", GREEN));
                 } else if (seconds <= 10) {
-                    player.showTitle(Title.title(Component.text(seconds, NamedTextColor.GREEN, TextDecoration.BOLD),
-                                                 Component.text("Game Start", NamedTextColor.GREEN)));
+                    player.showTitle(Title.title(text(seconds, GREEN, BOLD),
+                                                 text("Game Start", GREEN)));
                     player.sendMessage("" + ChatColor.GREEN + seconds);
                     if (seconds >= 0 && seconds <= 24) {
                         player.playNote(player.getEyeLocation(), Instrument.PIANO, new Note(24 - (int) seconds));
@@ -823,16 +835,16 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             for (Player player : world.getPlayers()) {
                 if (seconds == 0) {
                     player.showTitle(Title.title(Component.empty(),
-                                                 Component.text("KILL!", NamedTextColor.RED, TextDecoration.BOLD)));
-                    player.sendMessage(Component.text("KILL!", NamedTextColor.RED, TextDecoration.BOLD));
+                                                 text("KILL!", RED, BOLD)));
+                    player.sendMessage(text("KILL!", RED, BOLD));
                 } else if (seconds == state.seconds) {
-                    player.showTitle(Title.title(Component.text("Get Ready!", NamedTextColor.RED),
-                                                 Component.text("Sudden death in " + seconds + " seconds", NamedTextColor.RED)));
-                    player.sendMessage(Component.text("Sudden death in " + state.seconds + " seconds", NamedTextColor.RED));
+                    player.showTitle(Title.title(text("Get Ready!", RED),
+                                                 text("Sudden death in " + seconds + " seconds", RED)));
+                    player.sendMessage(text("Sudden death in " + state.seconds + " seconds", RED));
                 } else {
-                    player.showTitle(Title.title(Component.text(seconds, NamedTextColor.RED, TextDecoration.BOLD),
-                                                 Component.text("Sudden Death", NamedTextColor.RED)));
-                    player.sendMessage(Component.text("Sudden Death " + seconds, NamedTextColor.RED));
+                    player.showTitle(Title.title(text(seconds, RED, BOLD),
+                                                 text("Sudden Death", RED)));
+                    player.sendMessage(text("Sudden Death " + seconds, RED));
                 }
             }
         }
@@ -1126,7 +1138,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             @Override public void run() {
                 for (Player player : world.getPlayers()) {
                     player.showTitle(Title.title(Component.empty(),
-                                                 Component.text("Chests restocked", NamedTextColor.GREEN)));
+                                                 text("Chests restocked", GREEN)));
                     player.playSound(player.getEyeLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1f);
                 }
             }
@@ -1273,19 +1285,27 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         // Score
         Player killer = player.getKiller();
         if (killer != null && !killer.equals(player)) {
-            SurvivalPlayer theSurvivalPlayer = getSurvivalPlayer(killer);
-            theSurvivalPlayer.addKills(1);
-            if (theSurvivalPlayer.team != null && theSurvivalPlayer.team != getSurvivalPlayer(player).team) {
-                teams.get(theSurvivalPlayer.team).kills += 1;
+            SurvivalPlayer survivalKiller = getSurvivalPlayer(killer);
+            survivalKiller.addKills(1);
+            if (saveTag.event) {
+                saveTag.addKills(survivalKiller.uuid, 1);
+                computeHighscore();
+            }
+            if (survivalKiller.team != null && survivalKiller.team != getSurvivalPlayer(player).team) {
+                teams.get(survivalKiller.team).kills += 1;
             }
         } else {
             UUID lastDamager = getSurvivalPlayer(player).getLastDamager();
             if (lastDamager != null) {
-                SurvivalPlayer spKiller = getSurvivalPlayer(lastDamager);
-                if (spKiller.isPlayer()) {
-                    spKiller.addKills(1);
-                    if (spKiller.team != null && spKiller.team != getSurvivalPlayer(player).team) {
-                        teams.get(spKiller.team).kills += 1;
+                SurvivalPlayer survivalKiller = getSurvivalPlayer(lastDamager);
+                if (survivalKiller.isPlayer()) {
+                    survivalKiller.addKills(1);
+                    if (saveTag.event) {
+                        saveTag.addKills(survivalKiller.uuid, 1);
+                        computeHighscore();
+                    }
+                    if (survivalKiller.team != null && survivalKiller.team != getSurvivalPlayer(player).team) {
+                        teams.get(survivalKiller.team).kills += 1;
                     }
                 }
             }
@@ -1588,48 +1608,53 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    void onPlayerSidebar(PlayerSidebarEvent event) {
-        if (state == State.IDLE) return;
+    private void onPlayerSidebar(PlayerSidebarEvent event) {
+        if (state == State.IDLE) {
+            if (saveTag.event) {
+                eventSidebar(event);
+            }
+            return;
+        }
         List<Component> lines = new ArrayList<>();
         SurvivalPlayer theSurvivalPlayer = getSurvivalPlayer(event.getPlayer());
         if (theSurvivalPlayer.didPlay) {
             if (theSurvivalPlayer.team != null) {
-                lines.add(Component.text("Your Team ", NamedTextColor.GRAY)
+                lines.add(text("Your Team ", GRAY)
                           .append(theSurvivalPlayer.team.component));
                 List<SurvivalPlayer> teamPlayers = getAlivePlayers(theSurvivalPlayer.team);
                 Collections.sort(teamPlayers, (a, b) -> Integer.compare(b.kills, a.kills));
                 for (SurvivalPlayer sp : teamPlayers) {
                     int hearts = (int) Math.round(sp.health);
                     Player player = sp.getPlayer();
-                    lines.add(Component.text()
-                              .append(Component.text("" + sp.kills, NamedTextColor.DARK_RED))
+                    lines.add(text()
+                              .append(text("" + sp.kills, DARK_RED))
                               .append(Component.space())
-                              .append(Component.text(hearts + "\u2665", NamedTextColor.RED))
+                              .append(text(hearts + "\u2665", RED))
                               .append(Component.space())
                               .append(player != null && sp.isPlayer()
                                       ? player.displayName()
-                                      : Component.text(sp.name, NamedTextColor.GRAY))
+                                      : text(sp.name, GRAY))
                               .build());
                 }
             }
         }
         if (!saveTag.useTeams && winnerName != null) {
-            lines.add(Component.text()
-                      .append(Component.text("Winner ", NamedTextColor.GRAY))
-                      .append(Component.text(winnerName, NamedTextColor.GOLD))
+            lines.add(text()
+                      .append(text("Winner ", GRAY))
+                      .append(text(winnerName, GOLD))
                       .build());
         } else if (saveTag.useTeams && winnerTeam != null) {
-            lines.add(Component.text()
-                      .append(Component.text("Winner ", NamedTextColor.GRAY))
+            lines.add(text()
+                      .append(text("Winner ", GRAY))
                       .append(winnerTeam.component)
                       .build());
         }
         if (secondsLeft > 0) {
             long m = secondsLeft / 60;
             long s = secondsLeft % 60;
-            lines.add(Component.text()
-                      .append(Component.text("Time ", NamedTextColor.GRAY))
-                      .append(Component.text(m + "m " + s + "s", NamedTextColor.WHITE))
+            lines.add(text()
+                      .append(text("Time ", GRAY))
+                      .append(text(m + "m " + s + "s", WHITE))
                       .build());
         }
         if (saveTag.useTeams) {
@@ -1637,8 +1662,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             Collections.sort(list, (a, b) -> Integer.compare(b.alivePlayers, a.alivePlayers));
             for (TeamScore teamScore : list) {
                 if (teamScore.alivePlayers == 0) {
-                    lines.add(Component.text("0\u2665 " + teamScore.team.displayName,
-                                             NamedTextColor.DARK_GRAY));
+                    lines.add(text("0\u2665 " + teamScore.team.displayName,
+                                             DARK_GRAY));
                     continue;
                 }
                 Component teamDisplayName = null;
@@ -1654,10 +1679,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 if (teamDisplayName == null) {
                     teamDisplayName = teamScore.team.component;
                 }
-                lines.add(Component.join(JoinConfiguration.noSeparators(),
-                                         Component.text(teamScore.alivePlayers + "\u2665 ", NamedTextColor.RED),
-                                         Component.text(teamScore.kills + " ", NamedTextColor.DARK_RED),
-                                         teamDisplayName));
+                lines.add(join(noSeparators(),
+                               text(teamScore.alivePlayers + "\u2665 ", RED),
+                               text(teamScore.kills + " ", DARK_RED),
+                               teamDisplayName));
             }
         } else {
             List<SurvivalPlayer> list = new ArrayList<>(survivalPlayers.values());
@@ -1668,11 +1693,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 Player player = sp.getPlayer();
                 Component displayName = player != null
                     ? player.displayName()
-                    : Component.text(sp.getName(), NamedTextColor.WHITE);
-                lines.add(Component.text()
-                          .append(Component.text("" + sp.kills, NamedTextColor.DARK_RED))
+                    : text(sp.getName(), WHITE);
+                lines.add(text()
+                          .append(text("" + sp.kills, DARK_RED))
                           .append(Component.space())
-                          .append(Component.text(hearts + "\u2665", NamedTextColor.RED))
+                          .append(text(hearts + "\u2665", RED))
                           .append(Component.space())
                           .append(displayName)
                           .build());
@@ -1683,8 +1708,25 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    private void eventSidebar(PlayerSidebarEvent event) {
+        List<Component> lines = new ArrayList<>();
+        lines.add(join(noSeparators(), VanillaItems.GOLDEN_SWORD.component, TITLE, VanillaItems.BOW.component));
+        for (int i = 0; i < 10; i += 1) {
+            if (i >= highscore.size()) break;
+            Highscore hi = highscore.get(i);
+            lines.add(join(noSeparators(),
+                           Glyph.toComponent("" + hi.placement),
+                           space(),
+                           text(Unicode.tiny("kills"), GRAY),
+                           text(hi.score, GOLD),
+                           space(),
+                           text(hi.name(), WHITE)));
+        }
+        event.add(this, Priority.HIGHEST, lines);
+    }
+
     @EventHandler
-    void onEntityTarget(EntityTargetEvent event) {
+    private void onEntityTarget(EntityTargetEvent event) {
         if (spawnedMonsters.contains(event.getTarget())) {
             event.setCancelled(true);
         }
@@ -1734,5 +1776,40 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             if (sp == null || sp.team == null) continue;
             query.setTeam(player, sp.team.queryTeam);
         }
+    }
+
+    protected void computeHighscore() {
+        highscore.clear();
+        for (Map.Entry<UUID, Integer> entry : saveTag.kills.entrySet()) {
+            highscore.add(new Highscore(entry.getKey(), entry.getValue()));
+        }
+        Collections.sort(highscore, (a, b) -> Integer.compare(b.score, a.score));
+        int lastScore = -1;
+        int placement = 0;
+        for (Highscore hi : highscore) {
+            if (lastScore != hi.score) {
+                lastScore = hi.score;
+                placement += 1;
+            }
+            hi.placement = placement;
+        }
+    }
+
+    protected int rewardHighscore() {
+        List<SQLTrophy> trophies = new ArrayList<>();
+        for (Highscore hi : highscore) {
+            if (hi.score <= 0) break;
+            trophies.add(new SQLTrophy(hi.uuid,
+                                       "survival_games_event",
+                                       hi.placement,
+                                       TrophyCategory.MEDAL,
+                                       TITLE,
+                                       (saveTag.useTeams
+                                        ? "Survival Teams with " + hi.score + " kills"
+                                        : "Survival Games with " + hi.score + " kills")));
+        }
+        if (trophies.isEmpty()) return 0;
+        Trophies.insertTrophies(trophies);
+        return trophies.size();
     }
 }

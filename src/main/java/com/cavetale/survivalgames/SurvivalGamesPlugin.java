@@ -606,10 +606,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
             if (saveTag.event) {
                 for (SurvivalPlayer sp : survivalPlayers.values()) {
-                    if (sp.didPlay) {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + sp.getName());
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + sp.getName() + " Katniss");
-                    }
                     if (sp.winner) {
                         String cmd = "titles unlockset " + sp.name + " " + String.join(" ", WINNER_TITLES);
                         getLogger().info("Running command: " + cmd);

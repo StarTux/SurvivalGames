@@ -1801,8 +1801,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                                        TrophyCategory.MEDAL,
                                        TITLE,
                                        (saveTag.useTeams
-                                        ? "Survival Teams with " + hi.score + " kills"
-                                        : "Survival Games with " + hi.score + " kills")));
+                                        ? "Survival Teams with " + hi.score + " kill" + (hi.score == 1 ? "" : "s")
+                                        : "Survival Games with " + hi.score + " kill" + (hi.score == 1 ? "" : "s"))));
         }
         if (trophies.isEmpty()) return 0;
         Trophies.insertTrophies(trophies);

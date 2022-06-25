@@ -2,13 +2,13 @@ main: com.cavetale.survivalgames.SurvivalGamesPlugin
 name: SurvivalGames
 
 version: 0.1
-api-version: 1.18
+api-version: 1.19
 
 description: SurvivalGames mini game
 authors: [ StarTux ]
 website: https://cavetale.com
 
-depend: [Mytems, Core, PlayerCache, AFK, Title, Sidebar, Fam]
+depend: [Mytems, Core, PlayerCache, AFK, Title, Fam]
 softdepend: []
 
 commands:

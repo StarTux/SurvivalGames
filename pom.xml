@@ -33,7 +33,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.18.2-R0.1-SNAPSHOT</version>
+      <version>1.19-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
 
@@ -73,14 +73,6 @@
     <dependency>
       <groupId>com.cavetale.afk</groupId>
       <artifactId>afk</artifactId>
-      <version>0.1-SNAPSHOT</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <!-- Sidebar -->
-    <dependency>
-      <groupId>com.cavetale.sidebar</groupId>
-      <artifactId>sidebar</artifactId>
       <version>0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>

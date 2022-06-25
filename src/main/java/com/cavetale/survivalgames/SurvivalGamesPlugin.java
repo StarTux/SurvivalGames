@@ -1,18 +1,15 @@
 package com.cavetale.survivalgames;
 
 import com.cavetale.afk.AFKPlugin;
+import com.cavetale.core.event.hud.PlayerHudEvent;
+import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.event.player.PlayerTeamQuery;
-import com.cavetale.core.font.Unicode;
 import com.cavetale.core.font.VanillaItems;
 import com.cavetale.core.util.Json;
-import com.cavetale.fam.trophy.SQLTrophy;
-import com.cavetale.fam.trophy.Trophies;
+import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
-import com.cavetale.mytems.item.font.Glyph;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
-import com.cavetale.sidebar.PlayerSidebarEvent;
-import com.cavetale.sidebar.Priority;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
@@ -108,7 +105,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 import static net.kyori.adventure.text.Component.join;
-import static net.kyori.adventure.text.Component.space;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
@@ -155,7 +151,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     protected File saveFile;
     protected SaveTag saveTag;
     static final List<String> WINNER_TITLES = List.of("Survivor", "Victor", "SurviveTogether", "Arrow", "SpectralArrow");
-    protected List<Highscore> highscore = new ArrayList<>();
+    protected List<Highscore> highscore = List.of();
+    protected List<Component> sidebarHighscore = List.of();
     private static final Component TITLE = text("Survival Games", DARK_RED, BOLD);
 
     @Value static final class ChunkCoord {
@@ -185,7 +182,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 getLogger().warning("Title not found: " + winnerTitle);
             }
         }
-        computeHighscore();
     }
 
     public void onDisable() {
@@ -197,6 +193,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     protected void load() {
         saveTag = Json.load(saveFile, SaveTag.class, SaveTag::new);
+        computeHighscore();
     }
 
     protected void save() {
@@ -1604,7 +1601,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    private void onPlayerSidebar(PlayerSidebarEvent event) {
+    private void onPlayerHud(PlayerHudEvent event) {
         if (state == State.IDLE) {
             if (saveTag.event) {
                 eventSidebar(event);
@@ -1700,25 +1697,15 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
         }
         if (!lines.isEmpty()) {
-            event.add(this, Priority.HIGHEST, lines);
+            event.sidebar(PlayerHudPriority.HIGHEST, lines);
         }
     }
 
-    private void eventSidebar(PlayerSidebarEvent event) {
-        List<Component> lines = new ArrayList<>();
+    private void eventSidebar(PlayerHudEvent event) {
+        List<Component> lines = new ArrayList<>(11);
         lines.add(join(noSeparators(), VanillaItems.GOLDEN_SWORD.component, TITLE, VanillaItems.BOW.component));
-        for (int i = 0; i < 10; i += 1) {
-            if (i >= highscore.size()) break;
-            Highscore hi = highscore.get(i);
-            lines.add(join(noSeparators(),
-                           Glyph.toComponent("" + hi.placement),
-                           space(),
-                           text(Unicode.tiny("kills"), GRAY),
-                           text(hi.score, GOLD),
-                           space(),
-                           text(hi.name(), WHITE)));
-        }
-        event.add(this, Priority.HIGHEST, lines);
+        lines.addAll(sidebarHighscore);
+        event.sidebar(PlayerHudPriority.HIGHEST, lines);
     }
 
     @EventHandler
@@ -1775,37 +1762,17 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     protected void computeHighscore() {
-        highscore.clear();
-        for (Map.Entry<UUID, Integer> entry : saveTag.kills.entrySet()) {
-            highscore.add(new Highscore(entry.getKey(), entry.getValue()));
-        }
-        Collections.sort(highscore, (a, b) -> Integer.compare(b.score, a.score));
-        int lastScore = -1;
-        int placement = 0;
-        for (Highscore hi : highscore) {
-            if (lastScore != hi.score) {
-                lastScore = hi.score;
-                placement += 1;
-            }
-            hi.placement = placement;
-        }
+        this.highscore = Highscore.of(saveTag.kills);
+        this.sidebarHighscore = Highscore.sidebar(highscore, TrophyCategory.MEDAL);
     }
 
     protected int rewardHighscore() {
-        List<SQLTrophy> trophies = new ArrayList<>();
-        for (Highscore hi : highscore) {
-            if (hi.score <= 0) break;
-            trophies.add(new SQLTrophy(hi.uuid,
-                                       "survival_games_event",
-                                       hi.placement,
-                                       TrophyCategory.MEDAL,
-                                       TITLE,
-                                       (saveTag.useTeams
-                                        ? "Survival Teams with " + hi.score + " kill" + (hi.score == 1 ? "" : "s")
-                                        : "Survival Games with " + hi.score + " kill" + (hi.score == 1 ? "" : "s"))));
-        }
-        if (trophies.isEmpty()) return 0;
-        Trophies.insertTrophies(trophies);
-        return trophies.size();
+        return Highscore.reward(saveTag.kills,
+                                "survival_games",
+                                TrophyCategory.MEDAL,
+                                TITLE,
+                                hi -> (saveTag.useTeams
+                                       ? "Survival Teams with " + hi.score + " kill" + (hi.score == 1 ? "" : "s")
+                                       : "Survival Games with " + hi.score + " kill" + (hi.score == 1 ? "" : "s")));
     }
 }

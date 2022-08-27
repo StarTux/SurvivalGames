@@ -1,67 +1,71 @@
 kit:
 - bread;2
-- SpecialCompass
+- ender_pearl
 phases:
 # 0 - Some basic stuff
-- - [0.25, iron_helmet]
-  - [0.25, iron_chestplate]
-  - [0.25, iron_leggings]
-  - [0.25, iron_boots]
+- - [0.5, iron_helmet]
+  - [0.5, iron_chestplate]
+  - [0.5, iron_leggings]
+  - [0.5, iron_boots]
 
+  - stone_sword
   - stone_sword
   - stone_axe
 
   - [bow, arrow;16]
-  - [crossbow, arrow;16]
-  - [0.25, shield]
+  - [0.5, crossbow, arrow;16]
+  - shield
 
-  - cooked_beef;4
-  - bread;4
+  - cooked_beef;8
+  - bread;8
 
   - SpecialFirework
 
 # 1 - Add decent stuff
-- - [0.25, iron_helmet]
-  - [0.25, iron_chestplate]
-  - [0.25, iron_leggings]
-  - [0.25, iron_boots]
+- - [0.5, iron_helmet]
+  - [0.5, iron_chestplate]
+  - [0.5, iron_leggings]
+  - [0.5, iron_boots]
 
   - stone_sword
   - stone_axe
 
   - [bow, arrow;16]
-  - [crossbow, arrow;16]
-  - [0.25, shield]
+  - [0.5, crossbow, arrow;16]
+  - shield
 
-  - cooked_beef;4
-  - bread;4
+  - cooked_beef;8
+  - bread;8
 
   - SpecialLandMine
+  - RespawnTotem
 
 # 2 - Iron age
-- - [0.25, iron_helmet]
-  - [0.25, iron_chestplate]
-  - [0.25, iron_leggings]
-  - [0.25, iron_boots]
+- - [0.5, iron_helmet]
+  - [0.5, iron_chestplate]
+  - [0.5, iron_leggings]
+  - [0.5, iron_boots]
 
   - iron_sword
   - iron_axe
 
   - [bow, arrow;16]
-  - [0.25, shield]
+  - shield
 
-  - cooked_beef;4
-  - cooked_beef;2
+  - cooked_beef;16
+  - cooked_beef;8
   - bread;8
   - bread;10
 
   - FlameBow
 
   - SpecialFirework
+  - SpecialCompass
 
   - flint_and_steel
 
   - SpecialLandMine
+  - RespawnTotem
 
   - SpeedPotion
   - SpeedPotion
@@ -85,10 +89,10 @@ phases:
 
   - [bow, arrow;16]
 
-  - [0.25, shield]
+  - shield
 
-  - cooked_beef;4
-  - cooked_beef;2
+  - cooked_beef;16
+  - cooked_beef;8
   - bread;8
   - bread;10
 
@@ -98,9 +102,11 @@ phases:
   - ender_pearl;4
 
   - SpecialFirework
+  - SpecialCompass
 
   - flint_and_steel
   - SpecialLandMine
+  - RespawnTotem
 
   - RegenPotion
   - RegenPotion
@@ -117,14 +123,70 @@ phases:
   - [0.25, netherite_chestplate]
 
   - [bow, arrow;16]
-  - [crossbow, arrow;16]
+  - [0.5, crossbow, arrow;16]
 
-  - cooked_beef;4
+  - cooked_beef;8
   - bread;8
 
   - golden_apple
   - elytra
-  - ender_pearl;64
+  - ender_pearl;4
+  - totem_of_undying
 
 # Endgame
-- - '#item_sets'
+- - [0.25, netherite_helmet]
+  - [0.25, netherite_chestplate]
+  - [0.25, netherite_leggings]
+  - [0.25, netherite_boots]
+
+  - diamond_sword
+  - diamond_axe
+
+  - [bow, arrow;16]
+
+  - shield
+
+  - cooked_beef;16
+  - cooked_beef;8
+  - bread;8
+  - bread;16
+
+  - FlameBow
+
+  - ender_pearl;2
+  - ender_pearl;4
+
+  - SpecialFirework
+  - SpecialCompass
+
+  - flint_and_steel
+  - SpecialLandMine
+  - RespawnTotem
+
+  - RegenPotion
+  - RegenPotion
+
+  - PoisonPotion
+  - PoisonArrow
+
+  - golden_apple
+  - elytra
+  - totem_of_undying
+  - '#item_sets'
+
+- - [0.25, netherite_helmet]
+  - [0.25, netherite_chestplate]
+  - [0.25, netherite_chestplate]
+  - [0.25, netherite_chestplate]
+
+  - [bow, arrow;16]
+  - [crossbow, arrow;16]
+
+  - cooked_beef;8
+  - bread;8
+
+  - golden_apple
+  - elytra
+  - ender_pearl;4
+  - '#item_sets'
+  - totem_of_undying

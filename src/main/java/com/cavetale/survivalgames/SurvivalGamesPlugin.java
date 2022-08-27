@@ -1351,7 +1351,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    private void onUse(Player player, Event event, ItemStack item) {
+    private boolean onUse(Player player, Event event, ItemStack item) {
+        if (!state.canUseItem()) return false;
+        SurvivalPlayer sp = getSurvivalPlayer(player);
+        if (sp == null) return false;
         if (itemForKey("SpecialFirework").isSimilar(item)) {
             for (Player other : world.getPlayers()) {
                 if (other.equals(player) || !getSurvivalPlayer(other).isPlayer()) continue;
@@ -1364,7 +1367,39 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             if (event instanceof Cancellable) ((Cancellable) event).setCancelled(true);
             player.sendMessage(ChatColor.GREEN + "Your enemies have been revealed!");
             player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 0.5f, 1f);
+            return true;
+        } else if (itemForKey("RespawnTotem").isSimilar(item)) {
+            if (!saveTag.useTeams) return false;
+            SurvivalTeam team = sp.getTeam();
+            if (team == null) return false;
+            List<Player> options = new ArrayList<>();
+            for (SurvivalPlayer other : survivalPlayers.values()) {
+                if (other.getTeam() != team) continue;
+                Player otherPlayer = other.getPlayer();
+                if (otherPlayer == null || otherPlayer.getGameMode() != GameMode.SPECTATOR) continue;
+                options.add(otherPlayer);
+            }
+            if (options.isEmpty()) {
+                player.sendActionBar(text("No dead teammates found!", DARK_RED));
+                return false;
+            }
+            Player revivePlayer = options.get(random.nextInt(options.size()));
+            revivePlayer.teleport(player);
+            Players.reset(revivePlayer);
+            getSurvivalPlayer(revivePlayer).setPlayer();
+            for (Player target : world.getPlayers()) {
+                target.sendMessage(join(noSeparators(),
+                                        revivePlayer.displayName(),
+                                        text(" was revived by ", GREEN),
+                                        player.displayName(),
+                                        text(" for team ", GREEN),
+                                        team.component));
+            }
+            if (event instanceof Cancellable) ((Cancellable) event).setCancelled(true);
+            item.subtract(1);
+            return true;
         }
+        return false;
     }
 
     private boolean onTrigger(Player player, Block block) {

@@ -44,206 +44,6 @@ SpecialFireworkEffect:
         GREEN: 49
       fade-colors: []
       type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 44
-        BLUE: 178
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 49
-        BLUE: 44
-        GREEN: 178
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 179
-        BLUE: 44
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 44
-        BLUE: 178
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 49
-        BLUE: 44
-        GREEN: 178
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 179
-        BLUE: 44
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 44
-        BLUE: 178
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 49
-        BLUE: 44
-        GREEN: 178
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 179
-        BLUE: 44
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 44
-        BLUE: 178
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 49
-        BLUE: 44
-        GREEN: 178
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 179
-        BLUE: 44
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 44
-        BLUE: 178
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 49
-        BLUE: 44
-        GREEN: 178
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 179
-        BLUE: 44
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 44
-        BLUE: 178
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 49
-        BLUE: 44
-        GREEN: 178
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 179
-        BLUE: 44
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 44
-        BLUE: 178
-        GREEN: 49
-      fade-colors: []
-      type: BALL_LARGE
-    - ==: Firework
-      flicker: false
-      trail: false
-      colors:
-      - ==: Color
-        RED: 49
-        BLUE: 44
-        GREEN: 178
-      fade-colors: []
-      type: BALL_LARGE
     power: 2
 SpecialLandMine:
   ==: org.bukkit.inventory.ItemStack
@@ -334,3 +134,15 @@ PoisonArrow:
     ==: ItemMeta
     meta-type: POTION
     potion-type: minecraft:long_poison
+RespawnTotem:
+  ==: org.bukkit.inventory.ItemStack
+  v: 3120
+  type: TOTEM_OF_UNDYING
+  meta:
+    ==: ItemMeta
+    meta-type: UNSPECIFIC
+    display-name: §4Revive Dead Teammate
+    lore:
+    - §7This totem will bring
+    - §7one of your fallen
+    - §7teammates back to life.

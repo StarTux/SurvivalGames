@@ -18,4 +18,10 @@ public enum State {
     State(final long seconds) {
         this.seconds = seconds;
     }
+
+    public boolean canUseItem() {
+        return this == LOOTING
+            || this == FREE_FOR_ALL
+            || this == SUDDEN_DEATH;
+    }
 }

@@ -106,7 +106,9 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
+import static com.cavetale.core.font.Unicode.tiny;
 import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.space;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
@@ -1684,22 +1686,18 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         SurvivalPlayer theSurvivalPlayer = getSurvivalPlayer(event.getPlayer());
         if (theSurvivalPlayer.didPlay) {
             if (theSurvivalPlayer.team != null) {
-                lines.add(text("Your Team ", GRAY)
+                lines.add(text(tiny("your team "), GRAY)
                           .append(theSurvivalPlayer.team.component));
                 List<SurvivalPlayer> teamPlayers = getAlivePlayers(theSurvivalPlayer.team);
                 Collections.sort(teamPlayers, (a, b) -> Integer.compare(b.kills, a.kills));
                 for (SurvivalPlayer sp : teamPlayers) {
                     int hearts = (int) Math.round(sp.health);
-                    Player player = sp.getPlayer();
-                    lines.add(text()
-                              .append(text("" + sp.kills, DARK_RED))
-                              .append(Component.space())
-                              .append(text(hearts + "\u2665", RED))
-                              .append(Component.space())
-                              .append(player != null && sp.isPlayer()
-                                      ? player.displayName()
-                                      : text(sp.name, GRAY))
-                              .build());
+                    lines.add(join(noSeparators(),
+                                   text("" + sp.kills, DARK_RED),
+                                   space(),
+                                   text(hearts + "\u2764", RED),
+                                   space(),
+                                   text(sp.name, sp.isPlayer() ? theSurvivalPlayer.team.color : GRAY)));
                 }
             }
         }
@@ -1717,17 +1715,15 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (secondsLeft > 0) {
             long m = secondsLeft / 60;
             long s = secondsLeft % 60;
-            lines.add(text()
-                      .append(text("Time ", GRAY))
-                      .append(text(m + "m " + s + "s", WHITE))
-                      .build());
+            lines.add(join(noSeparators(), text(tiny("time "), GRAY), text(m + "m " + s + "s", WHITE)));
         }
         if (saveTag.useTeams) {
+            lines.add(join(noSeparators(), text(tiny("teams"), GRAY)));
             List<TeamScore> list = new ArrayList<>(teams.values());
             Collections.sort(list, (a, b) -> Integer.compare(b.alivePlayers, a.alivePlayers));
             for (TeamScore teamScore : list) {
                 if (teamScore.alivePlayers == 0) {
-                    lines.add(text("0\u2665 " + teamScore.team.displayName,
+                    lines.add(text("0\u2764 " + teamScore.team.displayName,
                                              DARK_GRAY));
                     continue;
                 }
@@ -1745,11 +1741,12 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     teamDisplayName = teamScore.team.component;
                 }
                 lines.add(join(noSeparators(),
-                               text(teamScore.alivePlayers + "\u2665 ", RED),
+                               text(teamScore.alivePlayers + "\u2764 ", RED),
                                text(teamScore.kills + " ", DARK_RED),
                                teamDisplayName));
             }
         } else {
+            lines.add(join(noSeparators(), text(tiny("players"), GRAY)));
             List<SurvivalPlayer> list = new ArrayList<>(survivalPlayers.values());
             list.removeIf(i -> !i.isPlayer());
             Collections.sort(list, (b, a) -> Integer.compare(a.kills, b.kills));
@@ -1759,13 +1756,12 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 Component displayName = player != null
                     ? player.displayName()
                     : text(sp.getName(), WHITE);
-                lines.add(text()
-                          .append(text("" + sp.kills, DARK_RED))
-                          .append(Component.space())
-                          .append(text(hearts + "\u2665", RED))
-                          .append(Component.space())
-                          .append(displayName)
-                          .build());
+                lines.add(join(noSeparators(),
+                               text("" + sp.kills, DARK_RED),
+                               space(),
+                               text(hearts + "\u2764", RED),
+                               space(),
+                               displayName));
             }
         }
         if (!lines.isEmpty()) {

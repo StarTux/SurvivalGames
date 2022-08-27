@@ -504,6 +504,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             getLogger().info("Entering state: " + newState);
             onStateChange(state, newState);
             state = newState;
+            save();
         }
     }
 

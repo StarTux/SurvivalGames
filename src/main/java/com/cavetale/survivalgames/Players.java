@@ -44,6 +44,6 @@ public final class Players {
         for (PotionEffect effect : player.getActivePotionEffects()) player.removePotionEffect(effect.getType());
         player.setFireTicks(0);
         // vehicle
-        if (player.getVehicle() != null) player.getVehicle().remove();
+        if (player.getVehicle() != null && !(player.getVehicle() instanceof Player)) player.getVehicle().remove();
     }
 }

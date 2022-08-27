@@ -1134,7 +1134,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     private void restockAllChests() {
         int count = 0;
         int skipped = 0;
-        final double chestRadius = 20;
+        final double chestRadius = 8;
         final double rr = chestRadius * chestRadius;
     blockLoop:
         for (Block block : restockChests) {

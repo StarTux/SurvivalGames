@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,6 +36,7 @@ import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.Title;
+import net.kyori.adventure.util.TriState;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
@@ -154,10 +156,19 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     protected List<Highscore> highscore = List.of();
     protected List<Component> sidebarHighscore = List.of();
     private static final Component TITLE = text("Survival Games", DARK_RED, BOLD);
+    private String worldName;
 
     @Value static final class ChunkCoord {
         int x;
         int z;
+    }
+
+    private void log(String msg) {
+        getLogger().info("[" + worldName + "] " + msg);
+    }
+
+    private void warn(String msg) {
+        getLogger().info("[" + worldName + "] " + msg);
     }
 
     // Setup event handlers
@@ -179,7 +190,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         load();
         for (String winnerTitle : WINNER_TITLES) {
             if (TitlePlugin.getInstance().getTitle(winnerTitle) == null) {
-                getLogger().warning("Title not found: " + winnerTitle);
+                warn("Title not found: " + winnerTitle);
             }
         }
     }
@@ -226,7 +237,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     void copyFileInternal(File src, File dst, int level) {
         if (debug) {
-            getLogger().info("Copying files: " + src + ", " + dst + ", " + level);
+            log("Copying files: " + src + ", " + dst + ", " + level);
         }
         if (src.isDirectory()) {
             File dst2 = new File(dst, src.getName());
@@ -240,7 +251,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             try {
                 Files.copy(src.toPath(), dst2.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
             } catch (IOException ioe) {
-                getLogger().warning("Error copying files: " + src + ", " + dst + ", " + level);
+                warn("Error copying files: " + src + ", " + dst + ", " + level);
                 throw new IllegalStateException(ioe);
             }
         }
@@ -248,7 +259,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     void removeFile(File file) {
         if (debug) {
-            getLogger().info("Removing file: " + file);
+            log("Removing file: " + file);
         }
         if (file.isDirectory()) {
             for (File file2 : file.listFiles()) removeFile(file2);
@@ -278,7 +289,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTaskLater(this, () -> removeFile(file), 1L);
     }
 
-    void loadWorld(String worldName) {
+    private void loadWorld(Runnable callback) {
         File sourceFile = new File(new File(getDataFolder(), "worlds"), worldName);
         if (!sourceFile.isDirectory()) throw new IllegalStateException("Not a directory: " + sourceFile);
         String destName = null;
@@ -294,7 +305,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         ConfigurationSection worldConfig;
         File configFile = new File(destFile, "config.yml");
         if (!configFile.exists()) {
-            getLogger().warning("World config not found: " + configFile);
+            warn("World config not found: " + configFile);
         }
         worldConfig = YamlConfiguration.loadConfiguration(configFile);
         WorldCreator wc = WorldCreator.name(destName);
@@ -305,15 +316,16 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         try {
             environment = World.Environment.valueOf(env.toUpperCase());
         } catch (IllegalArgumentException iae) {
-            getLogger().warning("Invalid environment: " + env);
+            warn("Invalid environment: " + env);
             environment = World.Environment.NORMAL;
         }
         wc.environment(environment);
+        wc.keepSpawnLoaded(TriState.FALSE);
+        world = wc.createWorld();
         processedChunks.clear();
         restockChests.clear();
         landMines.clear();
         credits.clear();
-        world = wc.createWorld();
         world.setAutoSave(false);
         world.setDifficulty(Difficulty.HARD);
         world.setPVP(false);
@@ -328,10 +340,24 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         world.setGameRule(GameRule.DO_MOB_LOOT, true);
         world.setStorm(false);
         world.setThundering(false);
-        processChunk(world.getSpawnLocation().getChunk());
-        for (Chunk chunk : world.getLoadedChunks()) {
-            processChunk(world.getSpawnLocation().getChunk());
+        Location spawn = world.getSpawnLocation();
+        final int radius = 4;
+        final int cx = spawn.getBlockX() >> 4;
+        final int cz = spawn.getBlockZ() >> 4;
+        final int[] locks = new int[1];
+        locks[0] += 1;
+        for (int z = cz - radius; z <= cz + radius; z += 1) {
+            for (int x = cx - radius; x <= cx + radius; x += 1) {
+                locks[0] += 1;
+                world.getChunkAtAsync(x, z, (Consumer<Chunk>) chunk -> {
+                        processChunk(chunk);
+                        locks[0] -= 1;
+                        if (locks[0] == 0) callback.run();
+                    });
+            }
         }
+        locks[0] -= 1;
+        if (locks[0] == 0) callback.run();
     }
 
     @SuppressWarnings("unchecked")
@@ -348,7 +374,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         for (String key : config.getKeys(false)) {
             ItemStack item = config.getItemStack(key);
             if (item == null) {
-                getLogger().warning("Bad item key: " + key);
+                warn("Bad item key: " + key);
             } else {
                 stockItems.put(key, item);
             }
@@ -467,7 +493,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 }
             }
             if (!debug && saveTag.useTeams && aliveCount == 1 && winnerTeam != null) {
-                if (debug) getLogger().info("Ending because there is 1 team left!");
+                log("Ending because there is 1 team left!");
                 for (SurvivalPlayer sp : survivalPlayers.values()) {
                     if (sp.team == winnerTeam) sp.winner = true;
                 }
@@ -476,11 +502,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 winnerName = getSurvivalPlayer(winnerUuid).getName();
                 getSurvivalPlayer(winnerUuid).setWinner(true);
                 getSurvivalPlayer(winnerUuid).setEndTime(new Date());
-                if (debug) getLogger().info("Ending because there is 1 survivor!");
+                log("Ending because there is 1 survivor!");
                 newState = State.END;
             } else if (aliveCount == 0) {
                 winnerName = null;
-                if (debug) getLogger().info("Ending because there are no survivors!");
+                log("Ending because there are no survivors!");
                 newState = State.END;
             }
         }
@@ -493,7 +519,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 if (state == State.SUDDEN_DEATH) {
                     survivalPlayers.remove(info.uuid);
                 } else if (discTicks > 20 * 60) {
-                    getLogger().info("Kicking " + sp.getName() + " because they were disconnected too long");
+                    log("Kicking " + sp.getName() + " because they were disconnected too long");
                     survivalPlayers.remove(info.uuid);
                 }
                 sp.setDiscTicks(discTicks + 1);
@@ -501,7 +527,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
         if (newState == null) newState = tickState();
         if (newState != null && state != newState) {
-            getLogger().info("Entering state: " + newState);
+            log("Entering state: " + newState);
             onStateChange(state, newState);
             state = newState;
             save();
@@ -606,7 +632,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 for (SurvivalPlayer sp : survivalPlayers.values()) {
                     if (sp.winner) {
                         String cmd = "titles unlockset " + sp.name + " " + String.join(" ", WINNER_TITLES);
-                        getLogger().info("Running command: " + cmd);
+                        log("Running command: " + cmd);
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
                     }
                 }
@@ -630,14 +656,14 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         player.showTitle(Title.title(winnerTeam.component,
                                                      text("Wins the Game!", winnerTeam.color)));
                     }
-                    getLogger().info(winnerTeam + " wins the game: " + nameString);
+                    log(winnerTeam + " wins the game: " + nameString);
                 } else {
                     for (Player player : world.getPlayers()) {
                         player.sendMessage(text("Draw! Nobody wins", RED));
                         player.showTitle(Title.title(text("Draw!", RED),
                                                      text("Nobody wins", RED)));
                     }
-                    getLogger().info("The game ends in a draw");
+                    log("The game ends in a draw");
                 }
             } else {
                 if (winnerName != null) {
@@ -646,14 +672,14 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         player.showTitle(Title.title(text(winnerName, GREEN),
                                                      text("Wins the Game!", GREEN)));
                     }
-                    getLogger().info(winnerName + " wins the game");
+                    log(winnerName + " wins the game");
                 } else {
                     for (Player player : world.getPlayers()) {
                         player.sendMessage(text("Draw! Nobody wins", RED));
                         player.showTitle(Title.title(text("Draw!", RED),
                                                      text("Nobody wins", RED)));
                     }
-                    getLogger().info("The game ends in a draw");
+                    log("The game ends in a draw");
                 }
             }
         default: break;
@@ -992,7 +1018,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             if (blockState instanceof Chest || blockState instanceof Barrel) {
                 Block block = blockState.getBlock();
                 if (restockChests.contains(block)) {
-                    getLogger().warning(String.format("Duplicate chest scanned at %d,%d,%d", block.getX(), block.getY(), block.getZ()));
+                    warn(String.format("Duplicate chest scanned at %d,%d,%d", block.getX(), block.getY(), block.getZ()));
                 } else {
                     try {
                         ((InventoryHolder) blockState).getInventory().clear();
@@ -1077,7 +1103,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     void makeImmobile(Player player, Location location) {
         if (!player.getLocation().getWorld().equals(location.getWorld()) || player.getLocation().distanceSquared(location) > 0.5) {
             player.teleport(location);
-            getLogger().info("Teleported " + player.getName() + " to their spawn location");
+            log("Teleported " + player.getName() + " to their spawn location");
         }
         player.setAllowFlight(true);
         player.setFlying(true);
@@ -1127,7 +1153,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
             if (stockBlock(block)) count++;
         }
-        getLogger().info("Phase " + restockPhase + ": Restocked " + count + " chests, skipped " + skipped);
+        log("Phase " + restockPhase + ": Restocked " + count + " chests, skipped " + skipped);
         new BukkitRunnable() {
             @Override public void run() {
                 for (Player player : world.getPlayers()) {
@@ -1182,7 +1208,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         ItemStack itemInHand = event.getItemInHand();
         if (Tag.PRESSURE_PLATES.isTagged(material) && itemForKey("SpecialLandMine").isSimilar(itemInHand)) {
             landMines.put(block, player.getUniqueId());
-            getLogger().info(String.format("%s placed Land Mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
+            log(String.format("%s placed Land Mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
             return;
         }
         event.setCancelled(true);
@@ -1343,7 +1369,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             block.setType(Material.AIR);
             Location loc = block.getLocation().add(0.5, 0.5, 0.5);
             block.getWorld().createExplosion(loc.getX(), loc.getY(), loc.getZ(), 4f, true, false);
-            getLogger().info(String.format("%s triggered land mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
+            log(String.format("%s triggered land mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
             return true;
         }
         return false;
@@ -1521,7 +1547,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
     }
 
-    public void startGame(String worldName) {
+    public void startGame(String theWorldName) {
         if (world != null) {
             removeWorld();
         }
@@ -1537,7 +1563,12 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         spawnLocationIter = 0;
         compassesGiven = false;
         //
-        loadWorld(worldName);
+        this.worldName = theWorldName;
+        loadWorld(this::startGameCallback);
+    }
+
+    private void startGameCallback() {
+        log("spawnLocations:" + spawnLocations.size());
         survivalPlayers.clear();
         teams.clear();
         for (Player player : Bukkit.getOnlinePlayers()) {

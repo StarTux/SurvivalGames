@@ -1636,7 +1636,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             makeImmobile(player, sp.getSpawnLocation());
         }
         if (saveTag.useTeams) {
-            int teamCount = Math.max(2, Math.min(SurvivalTeam.values().length, survivalPlayers.size() / 5));
+            final int teamCount = 2;
             List<SurvivalPlayer> spList = getAlivePlayers();
             Collections.shuffle(spList, random);
             for (int i = 0; i < spList.size(); i += 1) {

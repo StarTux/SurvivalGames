@@ -810,7 +810,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (!block.getRelative(0, -1, 0).isSolid()) return;
         loc = block.getLocation().add(0.5, 0.0, 0.5);
         boolean tooClose = false;
-        double exclusionRadiusSq = 24.0 * 24.0;
+        double exclusionRadiusSq = 32.0 * 32.0;
         for (Player nearby : world.getPlayers()) {
             if (!getSurvivalPlayer(player).isPlayer()) continue;
             if (loc.distanceSquared(nearby.getLocation()) < exclusionRadiusSq) {
@@ -821,7 +821,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         for (Mob nearby : spawnedMonsters) {
             if (loc.distanceSquared(nearby.getLocation()) < exclusionRadiusSq) {
                 nearbyMobCount += 1;
-                if (nearbyMobCount > 4) return;
+                if (nearbyMobCount > 2) return;
             }
         }
         List<EntityType> entityTypes = Arrays.asList(EntityType.ZOMBIE,

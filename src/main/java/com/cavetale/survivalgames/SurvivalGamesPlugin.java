@@ -1146,15 +1146,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 skipped++;
                 continue blockLoop;
             }
-            // See if player is nearby
-            for (Player player : world.getPlayers()) {
-                if (getSurvivalPlayer(player).isPlayer()) {
-                    if (player.getLocation().distanceSquared(blockLocation) < rr) {
-                        skipped++;
-                        continue blockLoop;
-                    }
-                }
-            }
             if (stockBlock(block)) count++;
         }
         log("Phase " + restockPhase + ": Restocked " + count + " chests, skipped " + skipped);

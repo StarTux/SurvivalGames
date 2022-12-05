@@ -1567,8 +1567,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (event.getCause() == EntityDamageEvent.DamageCause.VOID) {
             event.setCancelled(true);
             final SurvivalPlayer sp = getSurvivalPlayer(player);
-            if (sp != null) {
+            if (state != State.IDLE && sp != null && sp.getSpawnLocation() != null) {
                 Bukkit.getScheduler().runTask(this, () -> {
+                        player.setFallDistance(0);
                         player.teleport(sp.getSpawnLocation());
                         if (getSurvivalPlayer(player).isPlayer()) {
                             Players.reset(player);
@@ -1576,7 +1577,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         }
                     });
             } else {
-                Bukkit.getScheduler().runTask(this, () -> Spawn.warp(player));
+                Bukkit.getScheduler().runTask(this, () -> {
+                        player.setFallDistance(0);
+                        Spawn.warp(player);
+                    });
             }
         } else if (event.getCause() == EntityDamageEvent.DamageCause.LAVA) {
             event.setCancelled(true);

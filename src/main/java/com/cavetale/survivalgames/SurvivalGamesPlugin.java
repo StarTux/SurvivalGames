@@ -1191,7 +1191,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
-        if (player.getGameMode() == GameMode.CREATIVE) {
+        if (state == State.IDLE || player.getGameMode() == GameMode.CREATIVE || !player.getWorld().equals(world)) {
             return;
         }
         if (!player.getWorld().equals(world)) {
@@ -1215,7 +1215,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        if (player.getGameMode() == GameMode.CREATIVE) {
+        if (state == State.IDLE || player.getGameMode() == GameMode.CREATIVE || !player.getWorld().equals(world)) {
             return;
         }
         if (!player.getWorld().equals(world)) {
@@ -1248,26 +1248,31 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockFade(BlockFadeEvent event) {
+        if (state == State.IDLE || !event.getBlock().getWorld().equals(world)) return;
         event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockGrow(BlockGrowEvent event) {
+        if (state == State.IDLE || !event.getBlock().getWorld().equals(world)) return;
         event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockForm(BlockFormEvent event) {
+        if (state == State.IDLE || !event.getBlock().getWorld().equals(world)) return;
         event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockSpread(BlockSpreadEvent event) {
+        if (state == State.IDLE || !event.getBlock().getWorld().equals(world)) return;
         event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockIgnite(BlockIgniteEvent event) {
+        if (state == State.IDLE || !event.getBlock().getWorld().equals(world)) return;
         switch (event.getCause()) {
         case EXPLOSION:
         case FIREBALL:
@@ -1280,17 +1285,20 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onBlockBurn(BlockBurnEvent event) {
+        if (state == State.IDLE || !event.getBlock().getWorld().equals(world)) return;
         event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onHangingBreak(HangingBreakEvent event) {
+        if (state == State.IDLE || !event.getEntity().getWorld().equals(world)) return;
         event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent event) {
         final Player player = event.getEntity();
+        if (!player.getWorld().equals(world)) return;
         if (getSurvivalPlayer(player).isSpectator()) {
             player.teleport(world.getSpawnLocation());
             player.setGameMode(GameMode.SPECTATOR);
@@ -1410,13 +1418,17 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = false)
     private void onPlayerInteract(PlayerInteractEvent event) {
+        final Player player = event.getPlayer();
+        if (state == State.IDLE || player.getGameMode() == GameMode.CREATIVE || !player.getWorld().equals(world)) {
+            return;
+        }
         switch (event.getAction()) {
         case RIGHT_CLICK_AIR:
         case RIGHT_CLICK_BLOCK:
             if (event.hasBlock() && state != State.LOOTING && state != State.FREE_FOR_ALL && state != State.SUDDEN_DEATH) {
                 event.setCancelled(true);
             }
-            onUse(event.getPlayer(), event, event.getItem());
+            onUse(player, event, event.getItem());
             break;
         case PHYSICAL:
             if (event.hasBlock()) {
@@ -1425,7 +1437,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     event.setCancelled(true);
                     return;
                 }
-                if (onTrigger(event.getPlayer(), block)) {
+                if (onTrigger(player, block)) {
                     event.setCancelled(true);
                 }
             }
@@ -1436,8 +1448,12 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
-        ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
-        onUse(event.getPlayer(), event, item);
+        final Player player = event.getPlayer();
+        if (state == State.IDLE || player.getGameMode() == GameMode.CREATIVE || !player.getWorld().equals(world)) {
+            return;
+        }
+        ItemStack item = player.getInventory().getItemInMainHand();
+        onUse(player, event, item);
         boolean isFlint = item.getType() == Material.FLINT_AND_STEEL;
         if (isFlint && world.getPVP() && event.getRightClicked() instanceof Player) {
             item.subtract(1);
@@ -1454,6 +1470,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) {
+        final Player player = event.getPlayer();
+        if (state == State.IDLE || player.getGameMode() == GameMode.CREATIVE || !player.getWorld().equals(world)) {
+            return;
+        }
         switch (event.getRightClicked().getType()) {
         case ITEM_FRAME:
         case ARMOR_STAND:
@@ -1464,16 +1484,20 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     private void onEntityPortal(EntityPortalEvent event) {
+        if (state == State.IDLE || !event.getEntity().getWorld().equals(world)) {
+            return;
+        }
         event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerMove(PlayerMoveEvent event) {
         final Player player = event.getPlayer();
-        if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
+        if (state == State.IDLE
+            || player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR
+            || !player.getWorld().equals(world)) {
             return;
         }
-        if (!player.getWorld().equals(world)) return;
         SurvivalPlayer sp = getSurvivalPlayer(player);
         if (!sp.isPlayer()) return;
         switch (state) {
@@ -1490,12 +1514,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private Player getPlayerDamager(Entity damager) {
-        if (damager instanceof Player) {
-            return (Player) damager;
-        } else if (damager instanceof Projectile) {
-            Projectile projectile = (Projectile) damager;
-            if (projectile.getShooter() instanceof Player) {
-                return (Player) projectile.getShooter();
+        if (damager instanceof Player player) {
+            return player;
+        } else if (damager instanceof Projectile projectile) {
+            if (projectile.getShooter() instanceof Player player) {
+                return player;
             }
         }
         return null;
@@ -1503,18 +1526,18 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     private void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        switch (event.getEntity().getType()) {
+        Entity entity = event.getEntity();
+        if (state == State.IDLE || !entity.getWorld().equals(world)) return;
+        switch (entity.getType()) {
         case ITEM_FRAME:
         case ARMOR_STAND:
             event.setCancelled(true);
             return;
         default: break;
         }
-        if (!(event.getEntity() instanceof Player)) return;
-        Player damagee = (Player) event.getEntity();
+        if (!(entity instanceof Player damagee)) return;
         if (!getSurvivalPlayer(damagee).isPlayer()) return;
-        Entity entity = event.getDamager();
-        Player damager = getPlayerDamager(entity);
+        Player damager = getPlayerDamager(event.getDamager());
         if (damager == null) return;
         if (!getSurvivalPlayer(damager).isPlayer()) {
             event.setCancelled(true);
@@ -1529,10 +1552,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     private void onEntityCombustByEntity(EntityCombustByEntityEvent event) {
+        Entity entity = event.getEntity();
+        if (state == State.IDLE || !entity.getWorld().equals(world)) return;
         Player damager = getPlayerDamager(event.getCombuster());
         if (damager == null) return;
-        if (event.getEntity() instanceof Player) {
-            Player damagee = (Player) event.getEntity();
+        if (entity instanceof Player damagee) {
             if (saveTag.useTeams && getSurvivalPlayer(damager).team == getSurvivalPlayer(damagee).team) {
                 event.setCancelled(true);
                 return;
@@ -1543,6 +1567,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     private void onProjectileCollide(ProjectileCollideEvent event) {
         Projectile projectile = event.getEntity();
+        if (state == State.IDLE || !projectile.getWorld().equals(world)) return;
         Player shooter = getPlayerDamager(projectile);
         if (shooter == null) return;
         if (event.getCollidedWith() instanceof Player) {
@@ -1556,8 +1581,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void onEntityDamage(EntityDamageEvent event) {
-        if (!(event.getEntity() instanceof Player)) return;
-        final Player player = (Player) event.getEntity();
+        if (!(event.getEntity() instanceof Player player)) return;
         if (event.getCause() == EntityDamageEvent.DamageCause.VOID) {
             event.setCancelled(true);
             final SurvivalPlayer sp = getSurvivalPlayer(player);
@@ -1583,6 +1607,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void onPlayerItemDamage(PlayerItemDamageEvent event) {
+        if (state == State.IDLE || !event.getPlayer().getWorld().equals(world)) {
+            return;
+        }
         event.setCancelled(true);
     }
 
@@ -1775,6 +1802,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void onEntityTarget(EntityTargetEvent event) {
+        if (state == State.IDLE || !event.getEntity().getWorld().equals(world)) {
+            return;
+        }
         if (spawnedMonsters.contains(event.getTarget())) {
             event.setCancelled(true);
         }
@@ -1818,7 +1848,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    void onPlayerTeam(PlayerTeamQuery query) {
+    private void onPlayerTeam(PlayerTeamQuery query) {
+        if (state == State.IDLE) return;
         for (Player player : Bukkit.getOnlinePlayers()) {
             SurvivalPlayer sp = getSurvivalPlayer(player);
             if (sp == null || sp.team == null) continue;

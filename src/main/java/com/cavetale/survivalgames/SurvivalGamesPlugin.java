@@ -96,7 +96,6 @@ import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -1488,11 +1487,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             break;
         default: break;
         }
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    private void onPlayerToggleFlight(PlayerToggleFlightEvent event) {
-        event.setCancelled(true);
     }
 
     private Player getPlayerDamager(Entity damager) {

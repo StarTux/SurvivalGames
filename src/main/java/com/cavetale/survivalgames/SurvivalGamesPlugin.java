@@ -11,6 +11,7 @@ import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
+import com.winthier.spawn.Spawn;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
 import java.io.IOException;
@@ -280,7 +281,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     private void removeWorld(World theWorld) {
         for (Player player : theWorld.getPlayers()) {
-            if (!player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation())) {
+            if (!Spawn.warp(player)) {
                 player.kick(text("Your world expired", RED));
             }
         }
@@ -970,7 +971,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 : world.getSpawnLocation();
         case IDLE:
         default:
-            return Bukkit.getWorlds().get(0).getSpawnLocation();
+            return Spawn.get();
         }
     }
 
@@ -1565,10 +1566,17 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         final Player player = (Player) event.getEntity();
         if (event.getCause() == EntityDamageEvent.DamageCause.VOID) {
             event.setCancelled(true);
-            player.teleport(getSurvivalPlayer(player).getSpawnLocation());
-            if (getSurvivalPlayer(player).isPlayer()) {
-                Players.reset(player);
-                player.setHealth(0);
+            final SurvivalPlayer sp = getSurvivalPlayer(player);
+            if (sp != null) {
+                Bukkit.getScheduler().runTask(this, () -> {
+                        player.teleport(sp.getSpawnLocation());
+                        if (getSurvivalPlayer(player).isPlayer()) {
+                            Players.reset(player);
+                            player.setHealth(0);
+                        }
+                    });
+            } else {
+                Bukkit.getScheduler().runTask(this, () -> Spawn.warp(player));
             }
         } else if (event.getCause() == EntityDamageEvent.DamageCause.LAVA) {
             event.setCancelled(true);
@@ -1658,7 +1666,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 TitlePlugin.getInstance().setColor(player, null);
                 player.setGameMode(GameMode.ADVENTURE);
             }
-            player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
+            Spawn.warp(player);
         }
         removeWorld();
         onStateChange(state, State.IDLE);

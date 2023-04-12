@@ -3,6 +3,7 @@ package com.cavetale.survivalgames;
 import com.cavetale.afk.AFKPlugin;
 import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
+import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.event.player.PlayerTeamQuery;
 import com.cavetale.core.font.VanillaItems;
 import com.cavetale.core.util.Json;
@@ -1855,6 +1856,12 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             if (sp == null || sp.team == null) continue;
             query.setTeam(player, sp.team.queryTeam);
         }
+    }
+
+    @EventHandler
+    private void onPlayerTPA(PlayerTPAEvent event) {
+        if (state == State.IDLE) return;
+        event.setCancelled(true);
     }
 
     protected void computeHighscore() {

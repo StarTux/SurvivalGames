@@ -1410,7 +1410,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             getSurvivalPlayer(player).setLastDamager(owner);
             block.setType(Material.AIR);
             Location loc = block.getLocation().add(0.5, 0.5, 0.5);
-            block.getWorld().createExplosion(loc.getX(), loc.getY(), loc.getZ(), 4f, true, false);
+            block.getWorld().createExplosion(loc, 3f, true, false);
             log(String.format("%s triggered land mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
             return true;
         }

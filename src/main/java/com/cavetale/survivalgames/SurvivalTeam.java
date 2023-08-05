@@ -24,6 +24,7 @@ public enum SurvivalTeam {
         this.color = color;
         this.component = Component.text(displayName, color);
         this.queryTeam = new PlayerTeamQuery.Team("survivalgames:" + key,
-                                                  Component.text(displayName, color));
+                                                  Component.text(displayName, color),
+                                                  color);
     }
 }

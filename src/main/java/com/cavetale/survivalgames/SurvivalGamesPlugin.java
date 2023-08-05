@@ -1192,7 +1192,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
-        if (state == State.IDLE || player.getGameMode() == GameMode.CREATIVE || !player.getWorld().equals(world)) {
+        if (state == State.IDLE || state == State.COUNTDOWN_SUDDEN_DEATH
+            || player.getGameMode() == GameMode.CREATIVE || !player.getWorld().equals(world)) {
             return;
         }
         if (!player.getWorld().equals(world)) {

@@ -762,7 +762,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     private State tickFreeForAll(long ticks) {
         long timeLeft = state.seconds * 20 - ticks;
-        long limit = 60 * 4; // 4 final minutes
+        long limit = 60 * 3; // 3 final minutes
         if (timeLeft % 20 == 0) {
             long seconds = timeLeft / 20;
             secondsLeft = seconds;

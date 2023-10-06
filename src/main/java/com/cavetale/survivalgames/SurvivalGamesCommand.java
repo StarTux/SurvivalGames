@@ -4,6 +4,8 @@ import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.playercache.PlayerCache;
+import com.winthier.creative.BuildWorld;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.ChatColor;
@@ -28,7 +30,7 @@ public final class SurvivalGamesCommand implements TabExecutor {
             .description("Spawn in an item")
             .playerCaller(this::item);
         rootNode.addChild("start").arguments("<world>")
-            .completableList(ctx -> plugin.getWorldNames())
+            .completableList(ctx -> listWorldPaths())
             .description("Start game in a world")
             .senderCaller(this::start);
         rootNode.addChild("stop").denyTabCompletion()
@@ -41,6 +43,10 @@ public final class SurvivalGamesCommand implements TabExecutor {
             .completers(CommandArgCompleter.list("true", "false"))
             .description("Set event mode")
             .senderCaller(this::event);
+        rootNode.addChild("pause").arguments("true|false")
+            .completers(CommandArgCompleter.list("true", "false"))
+            .description("Set pause mode")
+            .senderCaller(this::pause);
         CommandNode score = rootNode.addChild("score")
             .description("Score subcommands");
         score.addChild("clear").denyTabCompletion()
@@ -58,6 +64,14 @@ public final class SurvivalGamesCommand implements TabExecutor {
             .description("Give out trophy rewards")
             .senderCaller(this::scoreReward);
         return this;
+    }
+
+    private List<String> listWorldPaths() {
+        List<String> result = new ArrayList<>();
+        for (BuildWorld buildWorld : BuildWorld.findMinigameWorlds(plugin.MINIGAME_TYPE, false)) {
+            result.add(buildWorld.getPath());
+        }
+        return result;
     }
 
     @Override
@@ -84,14 +98,15 @@ public final class SurvivalGamesCommand implements TabExecutor {
         return true;
     }
 
-    boolean start(CommandSender sender, String[] args) {
+    private boolean start(CommandSender sender, String[] args) {
         if (args.length != 1) return false;
         String worldName = args[0];
-        if (!plugin.getWorldNames().contains(worldName)) {
-            throw new CommandWarn(worldName + " not in world list: " + plugin.getWorldNames());
+        final BuildWorld buildWorld = BuildWorld.findWithPath(worldName);
+        if (buildWorld == null || buildWorld.getRow().parseMinigame() != plugin.MINIGAME_TYPE) {
+            throw new CommandWarn("Not a Survival Games world: " + buildWorld.getName());
         }
-        sender.sendMessage("Starting game in " + worldName);
-        plugin.startGame(worldName);
+        sender.sendMessage(text("Starting game in " + buildWorld.getName(), YELLOW));
+        plugin.startGame(buildWorld);
         return true;
     }
 
@@ -108,17 +123,23 @@ public final class SurvivalGamesCommand implements TabExecutor {
         return true;
     }
 
-    boolean event(CommandSender sender, String[] args) {
+    private boolean event(CommandSender sender, String[] args) {
         if (args.length > 1) return false;
         if (args.length >= 1) {
-            try {
-                plugin.saveTag.event = Boolean.parseBoolean(args[0]);
-            } catch (IllegalArgumentException iae) {
-                throw new CommandWarn("Boolean expected: " + args[0]);
-            }
+            plugin.saveTag.event = CommandArgCompleter.requireBoolean(args[0]);
             plugin.save();
         }
-        sender.sendMessage("Event mode: " + plugin.saveTag.event);
+        sender.sendMessage(text("Event mode: " + plugin.saveTag.event, YELLOW));
+        return true;
+    }
+
+    private boolean pause(CommandSender sender, String[] args) {
+        if (args.length > 1) return false;
+        if (args.length >= 1) {
+            plugin.saveTag.pause = CommandArgCompleter.requireBoolean(args[0]);
+            plugin.save();
+        }
+        sender.sendMessage(text("Pause mode: " + plugin.saveTag.pause, YELLOW));
         return true;
     }
 

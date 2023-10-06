@@ -3,6 +3,7 @@ package com.cavetale.survivalgames;
 import com.cavetale.afk.AFKPlugin;
 import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
+import com.cavetale.core.event.minigame.MinigameMatchType;
 import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.event.player.PlayerTeamQuery;
 import com.cavetale.core.font.VanillaItems;
@@ -12,12 +13,13 @@ import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
+import com.winthier.creative.BuildWorld;
+import com.winthier.creative.file.Files;
+import com.winthier.creative.review.MapReview;
+import com.winthier.creative.vote.MapVote;
 import com.winthier.spawn.Spawn;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,7 +40,6 @@ import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.Title;
-import net.kyori.adventure.util.TriState;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
@@ -52,8 +53,6 @@ import org.bukkit.Note;
 import org.bukkit.Sound;
 import org.bukkit.Tag;
 import org.bukkit.World;
-import org.bukkit.WorldCreator;
-import org.bukkit.WorldType;
 import org.bukkit.block.Barrel;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -121,6 +120,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     static final long RESTOCK_VARIANCE = 15;
     static final double SUDDEN_DEATH_RADIUS = 24;
     // minigame stuf
+    BuildWorld buildWorld;
     World world;
     @Setter boolean debug = false;
     // chunk processing
@@ -150,7 +150,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     final List<ItemStack> kitItems = new ArrayList<>();
     final Map<UUID, SurvivalPlayer> survivalPlayers = new HashMap<>();
     final Map<SurvivalTeam, TeamScore> teams = new EnumMap<>(SurvivalTeam.class);
-    private List<String> worldNames;
     private List<Mob> spawnedMonsters = new ArrayList<>();
     BossBar bossBar;
     protected File saveFile;
@@ -159,19 +158,25 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     protected List<Highscore> highscore = List.of();
     protected List<Component> sidebarHighscore = List.of();
     private static final Component TITLE = text("Survival Games", DARK_RED, BOLD);
-    private String worldName;
+    public static final MinigameMatchType MINIGAME_TYPE = MinigameMatchType.SURVIVAL_GAMES;
 
     @Value static final class ChunkCoord {
         int x;
         int z;
     }
 
+    private String getWorldName() {
+        return buildWorld != null
+            ? buildWorld.getPath()
+            : "Lobby";
+    }
+
     private void log(String msg) {
-        getLogger().info("[" + worldName + "] " + msg);
+        getLogger().info("[" + getWorldName() + "] " + msg);
     }
 
     private void warn(String msg) {
-        getLogger().info("[" + worldName + "] " + msg);
+        getLogger().info("[" + getWorldName() + "] " + msg);
     }
 
     // Setup event handlers
@@ -228,103 +233,21 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         player.setWalkSpeed(0.2f);
     }
 
-    /**
-     * Copy folder src to new destination and name dst.
-     */
-    private void copyFolder(File src, File dst) {
-        dst.mkdir();
-        for (File file : src.listFiles()) {
-            copyFileInternal(file, dst, 0);
-        }
-    }
-
-    private void copyFileInternal(File src, File dst, int level) {
-        if (debug) {
-            log("Copying files: " + src + ", " + dst + ", " + level);
-        }
-        if (src.isDirectory()) {
-            File dst2 = new File(dst, src.getName());
-            dst2.mkdir();
-            for (File src2 : src.listFiles()) {
-                copyFileInternal(src2, dst2, level + 1);
-            }
-        } else if (src.isFile()) {
-            if (level == 0 && src.getName().equals("uid.dat")) return;
-            File dst2 = new File(dst, src.getName());
-            try {
-                Files.copy(src.toPath(), dst2.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-            } catch (IOException ioe) {
-                warn("Error copying files: " + src + ", " + dst + ", " + level);
-                throw new IllegalStateException(ioe);
-            }
-        }
-    }
-
-    private void removeFile(File file) {
-        if (debug) {
-            log("Removing file: " + file);
-        }
-        if (file.isDirectory()) {
-            for (File file2 : file.listFiles()) removeFile(file2);
-        }
-        if (!file.delete()) {
-            throw new IllegalStateException("Cannot delete: " + file);
-        }
-    }
-
     private void removeWorld() {
         if (world == null) return;
         World oldWorld = world;
         world = null;
-        removeWorld(oldWorld);
+        buildWorld = null;
+        Files.deleteWorld(oldWorld);
     }
 
-    private void removeWorld(World theWorld) {
-        for (Player player : theWorld.getPlayers()) {
-            if (!Spawn.warp(player)) {
-                player.kick(text("Your world expired", RED));
-            }
-        }
-        File file = theWorld.getWorldFolder();
-        if (!Bukkit.unloadWorld(theWorld, false)) {
-            throw new IllegalStateException("Cannot unload: " + theWorld.getName());
-        }
-        Bukkit.getScheduler().runTaskLater(this, () -> removeFile(file), 1L);
+    private void loadWorld(BuildWorld theBuildWorld) {
+        buildWorld.makeLocalCopyAsync(w -> onWorldLoaded(theBuildWorld, w));
     }
 
-    private void loadWorld(Runnable callback) {
-        File sourceFile = new File(new File(getDataFolder(), "worlds"), worldName);
-        if (!sourceFile.isDirectory()) throw new IllegalStateException("Not a directory: " + sourceFile);
-        String destName = null;
-        File destFile = null;
-        int worldSuffix = 0;
-        do {
-            worldSuffix += 1;
-            destName = String.format("sg_%s_%02d", worldName.toLowerCase(), worldSuffix);
-            destFile = new File(Bukkit.getWorldContainer(), destName);
-            if (destFile.exists()) destFile = null;
-        } while (destFile == null);
-        copyFolder(sourceFile, destFile);
-        ConfigurationSection worldConfig;
-        File configFile = new File(destFile, "config.yml");
-        if (!configFile.exists()) {
-            warn("World config not found: " + configFile);
-        }
-        worldConfig = YamlConfiguration.loadConfiguration(configFile);
-        WorldCreator wc = WorldCreator.name(destName);
-        wc.generator("VoidGenerator");
-        wc.type(WorldType.FLAT);
-        World.Environment environment;
-        String env = worldConfig.getString("world.Environment", "NORMAL");
-        try {
-            environment = World.Environment.valueOf(env.toUpperCase());
-        } catch (IllegalArgumentException iae) {
-            warn("Invalid environment: " + env);
-            environment = World.Environment.NORMAL;
-        }
-        wc.environment(environment);
-        wc.keepSpawnLoaded(TriState.FALSE);
-        world = wc.createWorld();
+    private void onWorldLoaded(BuildWorld theBuildWorld, World theWorld) {
+        this.buildWorld = theBuildWorld;
+        this.world = theWorld;
         processedChunks.clear();
         restockChests.clear();
         landMines.clear();
@@ -355,19 +278,18 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 world.getChunkAtAsync(x, z, (Consumer<Chunk>) chunk -> {
                         processChunk(chunk);
                         locks[0] -= 1;
-                        if (locks[0] == 0) callback.run();
+                        if (locks[0] == 0) startGameCallback();
                     });
             }
         }
         locks[0] -= 1;
-        if (locks[0] == 0) callback.run();
+        if (locks[0] == 0) startGameCallback();
     }
 
     @SuppressWarnings("unchecked")
     protected void loadConfigFiles() {
         saveDefaultConfig();
         reloadConfig();
-        worldNames = getConfig().getStringList("worlds");
         saveResource("items.yml", false);
         saveResource("phases.yml", false);
         // Load config files
@@ -430,8 +352,16 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (phaseItems.isEmpty()) throw new IllegalStateException("No phase items!");
     }
 
+    public World getLobbyWorld() {
+        return Bukkit.getWorlds().get(0);
+    }
+
     private void tick() {
-        if (world == null || state == State.IDLE) return;
+        if (world == null || state == State.IDLE) {
+            tickLobby();
+            return;
+        }
+        MapVote.stop(MINIGAME_TYPE);
         long ticks = totalTicks++;
         spawnedMonsters.removeIf(m -> !m.isValid());
         for (SurvivalPlayer sp : survivalPlayers.values()) {
@@ -534,6 +464,22 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             onStateChange(state, newState);
             state = newState;
             save();
+        }
+    }
+
+    private void tickLobby() {
+        if (saveTag.pause || getLobbyWorld().getPlayers().size() < 2) {
+            MapVote.stop(MINIGAME_TYPE);
+            return;
+        }
+        if (!MapVote.isActive(MINIGAME_TYPE)) {
+            MapVote.start(MINIGAME_TYPE, vote -> {
+                    vote.setLobbyWorld(getLobbyWorld());
+                    vote.setTitle(TITLE);
+                    vote.setCallback(result -> {
+                            onWorldLoaded(result.getBuildWorldWinner(), result.getLocalWorldCopy());
+                        });
+                });
         }
     }
 
@@ -687,6 +633,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     log("The game ends in a draw");
                 }
             }
+            MapReview.start(world, buildWorld).remindAllOnce();
         default: break;
         }
     }
@@ -1616,7 +1563,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
     }
 
-    public void startGame(String theWorldName) {
+    public void startGame(BuildWorld theBuildWorld) {
         if (world != null) {
             removeWorld();
         }
@@ -1632,8 +1579,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         spawnLocationIter = 0;
         compassesGiven = false;
         //
-        this.worldName = theWorldName;
-        loadWorld(this::startGameCallback);
+        loadWorld(theBuildWorld);
     }
 
     private void startGameCallback() {

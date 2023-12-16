@@ -36,6 +36,9 @@ public final class SurvivalGamesCommand implements TabExecutor {
         rootNode.addChild("stop").denyTabCompletion()
             .description("Stop the game")
             .senderCaller(this::stop);
+        rootNode.addChild("skip").denyTabCompletion()
+            .description("Skip timer")
+            .senderCaller(this::skip);
         rootNode.addChild("debug").denyTabCompletion()
             .description("Toggle debug mode")
             .senderCaller(this::debug);
@@ -170,5 +173,10 @@ public final class SurvivalGamesCommand implements TabExecutor {
         plugin.computeHighscore();
         int count = plugin.rewardHighscore();
         sender.sendMessage(text(count + " scores rewarded", AQUA));
+    }
+
+    private void skip(CommandSender sender) {
+        plugin.stateTicks = plugin.state.seconds * 20;
+        sender.sendMessage(text("Skipped state " + plugin.state, YELLOW));
     }
 }

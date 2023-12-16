@@ -241,11 +241,23 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         Files.deleteWorld(oldWorld);
     }
 
-    private void loadWorld(BuildWorld theBuildWorld) {
-        buildWorld.makeLocalCopyAsync(w -> onWorldLoaded(theBuildWorld, w));
+    protected void startGame(BuildWorld theBuildWorld) {
+        theBuildWorld.makeLocalCopyAsync(w -> onWorldLoaded(theBuildWorld, w));
     }
 
     private void onWorldLoaded(BuildWorld theBuildWorld, World theWorld) {
+        totalTicks = 0;
+        stateTicks = 0;
+        restockTicks = 0;
+        restockPhase = 0;
+        winnerName = null;
+        winnerUuid = null;
+        winnerTeam = null;
+        spawnLocations.clear();
+        spawnLocationsRandomized = false;
+        spawnLocationIter = 0;
+        compassesGiven = false;
+        //
         this.buildWorld = theBuildWorld;
         this.world = theWorld;
         processedChunks.clear();
@@ -1055,7 +1067,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     private void makeImmobile(Player player, Location location) {
         if (!player.getLocation().getWorld().equals(location.getWorld()) || player.getLocation().distanceSquared(location) > 0.5) {
             player.teleport(location);
-            log("Teleported " + player.getName() + " to their spawn location");
+            log("Teleported " + player.getName() + " to their spawn location in " + location.getWorld().getName());
         }
         player.setAllowFlight(true);
         player.setFlying(true);
@@ -1561,25 +1573,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             return;
         }
         event.setCancelled(true);
-    }
-
-    public void startGame(BuildWorld theBuildWorld) {
-        if (world != null) {
-            removeWorld();
-        }
-        totalTicks = 0;
-        stateTicks = 0;
-        restockTicks = 0;
-        restockPhase = 0;
-        winnerName = null;
-        winnerUuid = null;
-        winnerTeam = null;
-        spawnLocations.clear();
-        spawnLocationsRandomized = false;
-        spawnLocationIter = 0;
-        compassesGiven = false;
-        //
-        loadWorld(theBuildWorld);
     }
 
     private void startGameCallback() {

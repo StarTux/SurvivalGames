@@ -12,7 +12,6 @@ import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsTag;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
-import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import com.winthier.creative.BuildWorld;
 import com.winthier.creative.file.Files;
 import com.winthier.creative.review.MapReview;
@@ -37,11 +36,11 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.Difficulty;
 import org.bukkit.GameMode;
@@ -58,9 +57,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
-import org.bukkit.boss.BarColor;
-import org.bukkit.boss.BarStyle;
-import org.bukkit.boss.BossBar;
+import org.bukkit.block.sign.Side;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
@@ -88,6 +85,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -186,7 +184,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         getCommand("survivalgames").setExecutor(new SurvivalGamesCommand(this).enable());
-        bossBar = Bukkit.createBossBar("Survival Games", BarColor.RED, BarStyle.SOLID);
+        bossBar = BossBar.bossBar(text("Survival Games", RED), 1f, BossBar.Color.RED, BossBar.Overlay.PROGRESS);
         try {
             loadConfigFiles();
         } catch (Exception e) {
@@ -220,11 +218,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private void enter(Player player) {
-        bossBar.addPlayer(player);
     }
 
     private void exit(Player player) {
-        bossBar.removePlayer(player);
         if (player.getGameMode() == GameMode.SPECTATOR) return;
         player.setWalkSpeed(0.2f);
         player.setAllowFlight(false);
@@ -500,9 +496,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         switch (newState) {
         case COUNTDOWN:
             // Once the countdown starts, remove everyone who disconnected
-            bossBar.setTitle(ChatColor.RED + "Get ready!");
-            bossBar.setColor(BarColor.RED);
-            bossBar.setProgress(1);
+            bossBar.name(text("Get ready!", RED));
+            bossBar.color(BossBar.Color.RED);
+            bossBar.progress(1f);
             for (SurvivalPlayer info : survivalPlayers.values()) {
                 if (!info.isOnline()) {
                     survivalPlayers.remove(info.uuid);
@@ -525,9 +521,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             break;
         case LOOTING:
             // Remove everyone who disconnected, reset everyone else so they can start playing
-            bossBar.setTitle(ChatColor.GREEN + "Peaceful");
-            bossBar.setColor(BarColor.GREEN);
-            bossBar.setProgress(1);
+            bossBar.name(text("Peaceful", GREEN));
+            bossBar.color(BossBar.Color.GREEN);
+            bossBar.progress(1f);
             for (SurvivalPlayer info : survivalPlayers.values()) {
                 if (info.isOnline() && info.isPlayer()) {
                     Player player = info.getPlayer();
@@ -537,9 +533,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
             break;
         case FREE_FOR_ALL:
-            bossBar.setTitle(ChatColor.DARK_RED + "Fight");
-            bossBar.setColor(BarColor.RED);
-            bossBar.setProgress(1);
+            bossBar.name(text("Fight", DARK_RED));
+            bossBar.color(BossBar.Color.RED);
+            bossBar.progress(1f);
             for (Player player : world.getPlayers()) {
                 player.showTitle(Title.title(Component.empty(),
                                              text("Fight!", RED)));
@@ -549,9 +545,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             world.setPVP(true);
             break;
         case COUNTDOWN_SUDDEN_DEATH:
-            bossBar.setTitle(ChatColor.DARK_RED + "Sudden Death");
-            bossBar.setColor(BarColor.RED);
-            bossBar.setProgress(1);
+            bossBar.name(text("Sudden Death", DARK_RED));
+            bossBar.color(BossBar.Color.RED);
+            bossBar.progress(1f);
             for (Player player : world.getPlayers()) {
                 SurvivalPlayer sp = getSurvivalPlayer(player);
                 if (sp.isPlayer()) {
@@ -571,9 +567,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             spawnedMonsters.clear();
             break;
         case SUDDEN_DEATH:
-            bossBar.setTitle(ChatColor.DARK_RED + "Sudden Death");
-            bossBar.setColor(BarColor.RED);
-            bossBar.setProgress(0);
+            bossBar.name(text("Sudden Death", DARK_RED));
+            bossBar.color(BossBar.Color.RED);
+            bossBar.progress(0f);
             for (Player player : world.getPlayers()) {
                 if (getSurvivalPlayer(player).isPlayer()) {
                     makeMobile(player);
@@ -585,9 +581,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             world.setGameRule(GameRule.NATURAL_REGENERATION, false);
             break;
         case END:
-            bossBar.setTitle(ChatColor.AQUA + "The End");
-            bossBar.setColor(BarColor.BLUE);
-            bossBar.setProgress(1);
+            bossBar.name(text("The End", AQUA));
+            bossBar.color(BossBar.Color.BLUE);
+            bossBar.progress(1f);
             for (Player player : world.getPlayers()) {
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 0.5f, 1f);
             }
@@ -669,8 +665,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (timeLeft % 20L == 0) {
             long seconds = timeLeft / 20;
             secondsLeft = seconds;
-            double progress = (double) seconds / (double) state.seconds;
-            bossBar.setProgress(Math.max(0, Math.min(1, progress)));
+            float progress = (float) seconds / (float) state.seconds;
+            bossBar.progress(Math.max(0f, Math.min(1f, progress)));
             for (Player player : world.getPlayers()) {
                 if (seconds == 0) {
                     player.showTitle(Title.title(text("GO!", GREEN, ITALIC),
@@ -685,7 +681,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 } else if (seconds <= 10) {
                     player.showTitle(Title.title(text(seconds, GREEN, BOLD),
                                                  text("Game Start", GREEN)));
-                    player.sendMessage("" + ChatColor.GREEN + seconds);
+                    player.sendMessage(text(seconds, GREEN));
                     if (seconds >= 0 && seconds <= 24) {
                         player.playNote(player.getEyeLocation(), Instrument.PIANO, new Note(24 - (int) seconds));
                     }
@@ -713,8 +709,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (timeLeft % 20 == 0) {
             long seconds = timeLeft / 20;
             secondsLeft = seconds;
-            double progress = (double) seconds / (double) state.seconds;
-            bossBar.setProgress(Math.max(0, Math.min(1, progress)));
+            float progress = (float) seconds / (float) state.seconds;
+            bossBar.progress(Math.max(0f, Math.min(1f, progress)));
         }
         return null;
     }
@@ -725,8 +721,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (timeLeft % 20 == 0) {
             long seconds = timeLeft / 20;
             secondsLeft = seconds;
-            double progress = (double) seconds / (double) state.seconds;
-            bossBar.setProgress(Math.max(0, Math.min(1, progress)));
+            float progress = (float) seconds / (float) state.seconds;
+            bossBar.progress(Math.max(0f, Math.min(1f, progress)));
             if (timeLeft < limit) {
                 for (Player player : new ArrayList<>(world.getPlayers())) {
                     if (getSurvivalPlayer(player).isPlayer()) {
@@ -814,8 +810,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (timeLeft % 20L == 0) {
             long seconds = timeLeft / 20;
             secondsLeft = seconds;
-            double progress = (double) seconds / (double) state.seconds;
-            bossBar.setProgress(Math.max(0, Math.min(1, progress)));
+            float progress = (float) seconds / (float) state.seconds;
+            bossBar.progress(Math.max(0f, Math.min(1f, progress)));
             for (Player player : world.getPlayers()) {
                 if (seconds == 0) {
                     player.showTitle(Title.title(Component.empty(),
@@ -853,8 +849,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (timeLeft % 20 == 0) {
             long seconds = timeLeft / 20;
             secondsLeft = seconds;
-            double progress = (double) seconds / (double) state.seconds;
-            bossBar.setProgress(Math.max(0, Math.min(1, progress)));
+            float progress = (float) seconds / (float) state.seconds;
+            bossBar.progress(Math.max(0f, Math.min(1f, progress)));
         }
         if (timeLeft <= 0) {
             stopGame();
@@ -996,11 +992,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 }
             } else if (blockState instanceof Sign) {
                 final Sign sign = (Sign) blockState;
-                String firstLine = PlainTextComponentSerializer.plainText().serialize(sign.line(0)).toLowerCase();
+                String firstLine = PlainTextComponentSerializer.plainText().serialize(sign.getSide(Side.FRONT).line(0)).toLowerCase();
                 if (firstLine != null && firstLine.startsWith("[") && firstLine.endsWith("]")) {
                     if (firstLine.equals("[credits]")) {
                         for (int i = 1; i < 4; ++i) {
-                            String credit = PlainTextComponentSerializer.plainText().serialize(sign.line(i));
+                            String credit = PlainTextComponentSerializer.plainText().serialize(sign.getSide(Side.FRONT).line(i));
                             if (credit != null) credits.add(credit);
                         }
                         blockState.getBlock().setType(Material.AIR);
@@ -1013,7 +1009,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         blockState.getBlock().setType(Material.AIR);
                     } else if (firstLine.equals("[time]")) {
                         long time = 0;
-                        String arg = PlainTextComponentSerializer.plainText().serialize(sign.line(1)).toLowerCase();
+                        String arg = PlainTextComponentSerializer.plainText().serialize(sign.getSide(Side.FRONT).line(1)).toLowerCase();
                         if ("day".equals(arg)) {
                             time = 1000;
                         } else if ("night".equals(arg)) {
@@ -1024,11 +1020,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                             time = 18000;
                         } else {
                             try {
-                                time = Long.parseLong(PlainTextComponentSerializer.plainText().serialize(sign.line(1)));
+                                time = Long.parseLong(PlainTextComponentSerializer.plainText().serialize(sign.getSide(Side.FRONT).line(1)));
                             } catch (NumberFormatException nfe) { }
                         }
                         world.setTime(time);
-                        if ("lock".equalsIgnoreCase(PlainTextComponentSerializer.plainText().serialize(sign.line(2)))) {
+                        if ("lock".equalsIgnoreCase(PlainTextComponentSerializer.plainText().serialize(sign.getSide(Side.FRONT).line(2)))) {
                             world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
                         } else {
                             world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
@@ -1327,7 +1323,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
             item.subtract(1);
             if (event instanceof Cancellable) ((Cancellable) event).setCancelled(true);
-            player.sendMessage(ChatColor.GREEN + "Your enemies have been revealed!");
+            player.sendMessage(text("Your enemies have been revealed!", GREEN));
             player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 0.5f, 1f);
             return true;
         } else if (itemForKey("RespawnTotem").isSimilar(item)) {
@@ -1527,13 +1523,12 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    private void onProjectileCollide(ProjectileCollideEvent event) {
+    private void onProjectileHit(ProjectileHitEvent event) {
         Projectile projectile = event.getEntity();
         if (state == State.IDLE || !projectile.getWorld().equals(world)) return;
         Player shooter = getPlayerDamager(projectile);
         if (shooter == null) return;
-        if (event.getCollidedWith() instanceof Player) {
-            Player target = (Player) event.getCollidedWith();
+        if (event.getHitEntity() instanceof Player target) {
             if (saveTag.useTeams && getSurvivalPlayer(shooter).team == getSurvivalPlayer(target).team) {
                 event.setCancelled(true);
                 return;
@@ -1642,6 +1637,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void onPlayerHud(PlayerHudEvent event) {
+        event.bossbar(PlayerHudPriority.HIGH, bossBar);
         if (state == State.IDLE) {
             if (saveTag.event) {
                 eventSidebar(event);

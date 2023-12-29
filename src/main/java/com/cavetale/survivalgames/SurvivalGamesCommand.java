@@ -8,7 +8,6 @@ import com.winthier.creative.BuildWorld;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -97,7 +96,7 @@ public final class SurvivalGamesCommand implements TabExecutor {
         if (args.length != 1) return false;
         String key = args[0];
         player.getInventory().addItem(plugin.itemForKey(key));
-        player.sendMessage(ChatColor.YELLOW + "Given item " + key);
+        player.sendMessage(text("Given item " + key, YELLOW));
         return true;
     }
 

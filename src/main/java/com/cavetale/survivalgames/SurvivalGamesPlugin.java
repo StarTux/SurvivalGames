@@ -7,6 +7,7 @@ import com.cavetale.core.event.minigame.MinigameMatchType;
 import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.event.player.PlayerTeamQuery;
 import com.cavetale.core.font.VanillaItems;
+import com.cavetale.core.money.Money;
 import com.cavetale.core.util.Json;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.Mytems;
@@ -593,6 +594,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         String cmd = "titles unlockset " + sp.name + " " + String.join(" ", WINNER_TITLES);
                         log("Running command: " + cmd);
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                        Money.get().give(sp.uuid, 10_000.0, this, "Survival Games");
                     }
                 }
             }
@@ -1273,6 +1275,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             if (saveTag.event) {
                 saveTag.addKills(survivalKiller.uuid, 1);
                 computeHighscore();
+                Money.get().give(survivalKiller.uuid, 1000.0, this, "Survival Games");
             }
             if (survivalKiller.team != null && survivalKiller.team != getSurvivalPlayer(player).team) {
                 teams.get(survivalKiller.team).kills += 1;
@@ -1286,6 +1289,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     if (saveTag.event) {
                         saveTag.addKills(survivalKiller.uuid, 1);
                         computeHighscore();
+                        Money.get().give(survivalKiller.uuid, 1000.0, this, "Survival Games");
                     }
                     if (survivalKiller.team != null && survivalKiller.team != getSurvivalPlayer(player).team) {
                         teams.get(survivalKiller.team).kills += 1;

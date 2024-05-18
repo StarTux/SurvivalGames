@@ -146,7 +146,7 @@ public final class SurvivalGamesCommand implements TabExecutor {
     }
 
     private void scoreClear(CommandSender sender) {
-        plugin.saveTag.kills.clear();
+        plugin.saveTag.scores.clear();
         plugin.save();
         plugin.computeHighscore();
         sender.sendMessage(text("Scores cleared", AQUA));
@@ -156,7 +156,7 @@ public final class SurvivalGamesCommand implements TabExecutor {
         if (args.length != 2) return false;
         PlayerCache target = PlayerCache.require(args[0]);
         int amount = CommandArgCompleter.requireInt(args[1], i -> true);
-        plugin.saveTag.addKills(target.uuid, amount);
+        plugin.saveTag.addScore(target.uuid, amount);
         plugin.save();
         plugin.computeHighscore();
         sender.sendMessage(text("Score changed: " + target.name + ", " + amount, AQUA));

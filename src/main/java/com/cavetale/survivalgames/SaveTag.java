@@ -8,9 +8,9 @@ public final class SaveTag {
     protected boolean event;
     protected boolean pause;
     protected boolean useTeams = true;
-    protected Map<UUID, Integer> kills = new HashMap<>();
+    protected Map<UUID, Integer> scores = new HashMap<>();
 
-    public void addKills(UUID uuid, int amount) {
-        kills.compute(uuid, (u, i) -> i != null ? i + amount : amount);
+    public void addScore(UUID uuid, int amount) {
+        scores.compute(uuid, (u, i) -> i != null ? i + amount : amount);
     }
 }

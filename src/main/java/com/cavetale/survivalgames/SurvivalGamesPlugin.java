@@ -594,7 +594,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         String cmd = "titles unlockset " + sp.name + " " + String.join(" ", WINNER_TITLES);
                         log("Running command: " + cmd);
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-                        Money.get().give(sp.uuid, 10_000.0, this, "Survival Games");
+                        Money.get().give(sp.uuid, 1000.0, this, "Survival Games");
+                        saveTag.addScore(sp.uuid, 5); // Win
+                    } else {
+                        saveTag.addScore(sp.uuid, 1); // Game played
                     }
                 }
             }
@@ -1273,7 +1276,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             SurvivalPlayer survivalKiller = getSurvivalPlayer(killer);
             survivalKiller.addKills(1);
             if (saveTag.event) {
-                saveTag.addKills(survivalKiller.uuid, 1);
+                saveTag.addScore(survivalKiller.uuid, 1); // Kill
                 computeHighscore();
                 Money.get().give(survivalKiller.uuid, 1000.0, this, "Survival Games");
             }
@@ -1287,7 +1290,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 if (survivalKiller.isPlayer()) {
                     survivalKiller.addKills(1);
                     if (saveTag.event) {
-                        saveTag.addKills(survivalKiller.uuid, 1);
+                        saveTag.addScore(survivalKiller.uuid, 1); // Kill
                         computeHighscore();
                         Money.get().give(survivalKiller.uuid, 1000.0, this, "Survival Games");
                     }
@@ -1806,17 +1809,17 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     protected void computeHighscore() {
-        this.highscore = Highscore.of(saveTag.kills);
+        this.highscore = Highscore.of(saveTag.scores);
         this.sidebarHighscore = Highscore.sidebar(highscore, TrophyCategory.MEDAL);
     }
 
     protected int rewardHighscore() {
-        return Highscore.reward(saveTag.kills,
+        return Highscore.reward(saveTag.scores,
                                 "survival_games",
                                 TrophyCategory.MEDAL,
                                 TITLE,
                                 hi -> (saveTag.useTeams
-                                       ? "Survival Teams with " + hi.score + " kill" + (hi.score == 1 ? "" : "s")
-                                       : "Survival Games with " + hi.score + " kill" + (hi.score == 1 ? "" : "s")));
+                                       ? "Survival Teams with " + hi.score + " point" + (hi.score == 1 ? "" : "s")
+                                       : "Survival Games with " + hi.score + " point" + (hi.score == 1 ? "" : "s")));
     }
 }

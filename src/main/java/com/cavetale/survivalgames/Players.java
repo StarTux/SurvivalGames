@@ -18,7 +18,7 @@ public final class Players {
         // speed
         player.setWalkSpeed(0.2f);
         // bed
-        player.setBedSpawnLocation(null, true);
+        player.setRespawnLocation(null);
         player.setSleepingIgnored(false);
         // exp
         player.setLevel(0);

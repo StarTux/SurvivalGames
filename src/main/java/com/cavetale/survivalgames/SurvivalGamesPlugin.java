@@ -881,9 +881,12 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             if (amount > 0) result.setAmount(amount);
             return result;
         }
-        Material material = Material.getMaterial(key.toUpperCase());
-        if (material != null) return new ItemStack(material, (amount > 0 ? amount : 1));
-        throw new IllegalArgumentException("Invalid item key: " + key);
+        try {
+            final Material material = Material.valueOf(key.toUpperCase());
+            return new ItemStack(material, (amount > 0 ? amount : 1));
+        } catch (IllegalArgumentException iae) {
+            throw new IllegalArgumentException("Invalid item key: " + key);
+        }
     }
 
     private List<ItemStack> randomPhaseItems(int index) {

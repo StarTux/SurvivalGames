@@ -1197,7 +1197,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
         Block block = event.getBlock();
         Material material = block.getType();
-        if (Tag.TALL_FLOWERS.isTagged(material)) {
+        if (Tag.FLOWERS.isTagged(material)) {
             return; // Allow
         }
         if (material == Material.FIRE) return;

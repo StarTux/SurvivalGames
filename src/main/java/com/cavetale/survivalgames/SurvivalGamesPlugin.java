@@ -835,12 +835,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private State tickSuddenDeath(long ticks) {
-        if (ticks > 0 && (ticks % 200) == 0) {
+        if (ticks >= 20 * 60 && (ticks % 100) == 0) {
             for (Player player : world.getPlayers()) {
-                if (getSurvivalPlayer(player).isPlayer()) {
-                    player.setFoodLevel(Math.max(2, player.getFoodLevel() - 2));
-                    player.damage(1.0);
-                }
+                if (!getSurvivalPlayer(player).isPlayer()) continue;
+                player.setFoodLevel(Math.max(0, player.getFoodLevel() - 1));
+                player.setHealth(Math.max(0.0, player.getHealth() - 1.0));
             }
         }
         return null;

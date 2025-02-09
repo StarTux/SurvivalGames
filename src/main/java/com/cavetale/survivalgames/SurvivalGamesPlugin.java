@@ -21,7 +21,6 @@ import com.winthier.spawn.Spawn;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumMap;
@@ -372,7 +371,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
         MapVote.stop(MINIGAME_TYPE);
         long ticks = totalTicks++;
-        spawnedMonsters.removeIf(m -> !m.isValid());
+        spawnedMonsters.removeIf(Mob::isDead);
         for (SurvivalPlayer sp : survivalPlayers.values()) {
             if (sp.isPlayer() && sp.isOnline()) {
                 sp.health = sp.getPlayer().getHealth();
@@ -453,7 +452,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
         }
         // Check for disconnects
-        for (SurvivalPlayer info : new ArrayList<>(survivalPlayers.values())) {
+        for (SurvivalPlayer info : List.copyOf(survivalPlayers.values())) {
             SurvivalPlayer sp = getSurvivalPlayer(info.getUuid());
             if (!info.isOnline()) {
                 // Kick players who disconnect too long
@@ -722,14 +721,14 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     private State tickFreeForAll(long ticks) {
         long timeLeft = state.seconds * 20 - ticks;
-        long limit = 60 * 3; // 3 final minutes
+        long limit = 60 * 4; // 4 final minutes
         if (timeLeft % 20 == 0) {
             long seconds = timeLeft / 20;
             secondsLeft = seconds;
             float progress = (float) seconds / (float) state.seconds;
             bossBar.progress(Math.max(0f, Math.min(1f, progress)));
             if (timeLeft < limit) {
-                for (Player player : new ArrayList<>(world.getPlayers())) {
+                for (Player player : List.copyOf(world.getPlayers())) {
                     if (getSurvivalPlayer(player).isPlayer()) {
                         tryToSpawnMob(player);
                     }
@@ -752,7 +751,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private void tryToSpawnMob(Player player) {
-        if (spawnedMonsters.size() > 100) return;
+        if (spawnedMonsters.size() > 200) return;
         Location loc = player.getLocation();
         Vector vec = new Vector(random.nextDouble(), 0.0, random.nextDouble());
         double distance = 24.0 + random.nextDouble() * 24.0;
@@ -770,43 +769,41 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty()) return;
         if (!block.getRelative(0, -1, 0).isSolid()) return;
         loc = block.getLocation().add(0.5, 0.0, 0.5);
-        boolean tooClose = false;
-        double exclusionRadiusSq = 32.0 * 32.0;
         for (Player nearby : world.getPlayers()) {
             if (!getSurvivalPlayer(player).isPlayer()) continue;
-            if (loc.distanceSquared(nearby.getLocation()) < exclusionRadiusSq) {
+            if (loc.distanceSquared(nearby.getLocation()) < 24.0 * 24.0) {
                 return;
             }
         }
         int nearbyMobCount = 0;
         for (Mob nearby : spawnedMonsters) {
-            if (loc.distanceSquared(nearby.getLocation()) < exclusionRadiusSq) {
-                nearbyMobCount += 1;
-                if (nearbyMobCount > 2) return;
+            if (loc.distanceSquared(nearby.getLocation()) < 4.0) {
+                return;
             }
         }
-        List<EntityType> entityTypes = Arrays.asList(EntityType.ZOMBIE,
-                                                     EntityType.CREEPER,
-                                                     EntityType.SKELETON,
-                                                     EntityType.SPIDER,
-                                                     EntityType.BLAZE,
-                                                     EntityType.DROWNED,
-                                                     EntityType.HOGLIN,
-                                                     EntityType.HUSK,
-                                                     EntityType.STRAY,
-                                                     EntityType.VINDICATOR,
-                                                     EntityType.WITCH,
-                                                     EntityType.WITHER_SKELETON,
-                                                     EntityType.WITHER_SKELETON,
-                                                     EntityType.ZOGLIN,
-                                                     EntityType.ZOMBIE_VILLAGER);
-        EntityType entityType = entityTypes.get(random.nextInt(entityTypes.size()));
+        final EntityType[] entityTypes = {
+            EntityType.CREEPER,
+            EntityType.SKELETON,
+            EntityType.SPIDER,
+            EntityType.BLAZE,
+            EntityType.DROWNED,
+            EntityType.HOGLIN,
+            EntityType.HUSK,
+            EntityType.STRAY,
+            EntityType.VINDICATOR,
+            EntityType.WITCH,
+            EntityType.WITHER_SKELETON,
+            EntityType.ZOMBIE_VILLAGER,
+            EntityType.BREEZE,
+        };
+        EntityType entityType = entityTypes[random.nextInt(entityTypes.length)];
         Mob mob = (Mob) loc.getWorld().spawn(loc, entityType.getEntityClass(), e -> {
                 e.setPersistent(false);
-                if (e instanceof Mob) ((Mob) e).setRemoveWhenFarAway(true);
+                if (e instanceof Mob) ((Mob) e).setRemoveWhenFarAway(false);
                 if (e instanceof Zombie) ((Zombie) e).setShouldBurnInDay(false);
                 if (e instanceof Skeleton) ((Skeleton) e).setShouldBurnInDay(false);
             });
+        if (mob == null) return;
         spawnedMonsters.add(mob);
     }
 

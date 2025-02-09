@@ -771,7 +771,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         loc = block.getLocation().add(0.5, 0.0, 0.5);
         for (Player nearby : world.getPlayers()) {
             if (!getSurvivalPlayer(player).isPlayer()) continue;
-            if (loc.distanceSquared(nearby.getLocation()) < 24.0 * 24.0) {
+            if (loc.distanceSquared(nearby.getLocation()) < 16.0 * 16.0) {
                 return;
             }
         }

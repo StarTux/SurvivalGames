@@ -430,8 +430,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 if (aliveCount > 1) winnerTeam = null;
                 if (aliveCount == 1) {
                     for (Player player : world.getPlayers()) {
-                        player.showTitle(Title.title(Component.empty(),
+                        player.showTitle(Title.title(text("No more teams!", RED),
                                                      text("No more teams!", RED)));
+                        player.sendMessage(text("No more teams!", RED));
                     }
                     useTeams = false;
                 }
@@ -1664,7 +1665,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         List<Component> lines = new ArrayList<>();
         SurvivalPlayer theSurvivalPlayer = getSurvivalPlayer(event.getPlayer());
         if (theSurvivalPlayer.didPlay) {
-            if (theSurvivalPlayer.team != null) {
+            if (useTeams && theSurvivalPlayer.team != null) {
                 lines.add(text(tiny("your team "), GRAY)
                           .append(theSurvivalPlayer.team.component));
                 List<SurvivalPlayer> teamPlayers = getAlivePlayers(theSurvivalPlayer.team);

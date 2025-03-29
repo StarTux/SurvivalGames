@@ -8,6 +8,7 @@ import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.event.player.PlayerTeamQuery;
 import com.cavetale.core.font.VanillaItems;
 import com.cavetale.core.money.Money;
+import com.cavetale.core.struct.Vec3i;
 import com.cavetale.core.util.Json;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.Mytems;
@@ -101,7 +102,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 import static com.cavetale.core.font.Unicode.tiny;
@@ -116,7 +116,7 @@ import static net.kyori.adventure.text.format.TextDecoration.*;
 public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     static final long RESTOCK_SECONDS = 100;
     static final long RESTOCK_VARIANCE = 15;
-    static final double SUDDEN_DEATH_RADIUS = 24;
+    static final double SUDDEN_DEATH_RADIUS = 32;
     // minigame stuf
     BuildWorld buildWorld;
     World world;
@@ -137,7 +137,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     long stateTicks;
     long restockTicks = 0;
     long secondsLeft;
-    int restockPhase = 0;
     UUID winnerUuid = null;
     String winnerName = null;
     SurvivalTeam winnerTeam = null;
@@ -157,6 +156,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     protected List<Component> sidebarHighscore = List.of();
     private static final Component TITLE = text("Survival Games", DARK_RED, BOLD);
     public static final MinigameMatchType MINIGAME_TYPE = MinigameMatchType.SURVIVAL_GAMES;
+    private double initialBorderSize;
+    private Location initialBorderCenter;
+    private boolean useTeams = true;
+    @Setter private boolean testing = false;
 
     @Value static final class ChunkCoord {
         int x;
@@ -245,7 +248,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         totalTicks = 0;
         stateTicks = 0;
         restockTicks = 0;
-        restockPhase = 0;
         winnerName = null;
         winnerUuid = null;
         winnerTeam = null;
@@ -253,6 +255,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         spawnLocationsRandomized = false;
         spawnLocationIter = 0;
         compassesGiven = false;
+        useTeams = true;
         //
         this.buildWorld = theBuildWorld;
         this.world = theWorld;
@@ -275,6 +278,15 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         world.setStorm(false);
         world.setThundering(false);
         Location spawn = world.getSpawnLocation();
+        // Prepare world border
+        if (world.getWorldBorder().getSize() > 512.0) {
+            getLogger().info("Fixing world border...");
+            world.getWorldBorder().setCenter(spawn);
+            world.getWorldBorder().setSize(512.0);
+        }
+        initialBorderSize = world.getWorldBorder().getSize();
+        initialBorderCenter = world.getWorldBorder().getCenter();
+        // Prepare scanning
         final int radius = 4;
         final int cx = spawn.getBlockX() >> 4;
         final int cz = spawn.getBlockZ() >> 4;
@@ -388,7 +400,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 double dist = Double.MAX_VALUE;
                 for (Player target : world.getPlayers()) {
                     if (!player.equals(target) && getSurvivalPlayer(target).isPlayer()) {
-                        if (saveTag.useTeams && getSurvivalPlayer(player).team == getSurvivalPlayer(target).team) {
+                        if (useTeams && getSurvivalPlayer(player).team == getSurvivalPlayer(target).team) {
                             continue;
                         }
                         Location targetLoc = target.getLocation();
@@ -403,9 +415,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
         }
         State newState = null;
-        if (state != State.END) {
+        if (!testing && state != State.END && state != State.COUNTDOWN && state != State.LOOTING) {
             int aliveCount = 0;
-            if (saveTag.useTeams) {
+            if (useTeams) {
                 for (TeamScore teamScore : teams.values()) {
                     teamScore.alivePlayers = 0;
                 }
@@ -416,6 +428,13 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     winnerTeam = sp.team;
                 }
                 if (aliveCount > 1) winnerTeam = null;
+                if (aliveCount == 1) {
+                    for (Player player : world.getPlayers()) {
+                        player.showTitle(Title.title(Component.empty(),
+                                                     text("No more teams!", RED)));
+                    }
+                    useTeams = false;
+                }
             } else {
                 for (SurvivalPlayer info : survivalPlayers.values()) {
                     if (info.isPlayer()) {
@@ -433,13 +452,13 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     }
                 }
             }
-            if (!debug && saveTag.useTeams && aliveCount == 1 && winnerTeam != null) {
+            if (!debug && useTeams && aliveCount == 1 && winnerTeam != null) {
                 log("Ending because there is 1 team left!");
                 for (SurvivalPlayer sp : survivalPlayers.values()) {
                     if (sp.team == winnerTeam) sp.winner = true;
                 }
                 newState = State.END;
-            } else if (!debug && !saveTag.useTeams && aliveCount == 1 && winnerUuid != null) {
+            } else if (!debug && !useTeams && aliveCount == 1 && winnerUuid != null) {
                 winnerName = getSurvivalPlayer(winnerUuid).getName();
                 getSurvivalPlayer(winnerUuid).setWinner(true);
                 getSurvivalPlayer(winnerUuid).setEndTime(new Date());
@@ -531,6 +550,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     player.setGameMode(GameMode.SURVIVAL);
                 }
             }
+            restockAllChests();
             break;
         case FREE_FOR_ALL:
             bossBar.name(text("Fight", DARK_RED));
@@ -578,6 +598,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             world.setPVP(true);
             world.getWorldBorder().setCenter(world.getSpawnLocation());
             world.getWorldBorder().setSize(SUDDEN_DEATH_RADIUS * 2.0);
+            world.getWorldBorder().setWarningDistance(0);
             world.setGameRule(GameRule.NATURAL_REGENERATION, false);
             break;
         case END:
@@ -603,7 +624,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             for (Player player : world.getPlayers()) {
                 player.setGameMode(GameMode.SPECTATOR);
             }
-            if (saveTag.useTeams) {
+            if (useTeams) {
                 if (winnerTeam != null) {
                     List<SurvivalPlayer> winners = getWinningPlayers();
                     String nameString = winners.stream()
@@ -720,13 +741,23 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private State tickFreeForAll(long ticks) {
-        long timeLeft = state.seconds * 20 - ticks;
-        long limit = 60 * 4; // 4 final minutes
-        if (timeLeft % 20 == 0) {
-            long seconds = timeLeft / 20;
-            secondsLeft = seconds;
-            float progress = (float) seconds / (float) state.seconds;
-            bossBar.progress(Math.max(0f, Math.min(1f, progress)));
+        final long timeLeft = state.seconds * 20 - ticks;
+        final long limit = 60 * 4; // 4 final minutes
+        final long seconds = timeLeft / 20;
+        secondsLeft = seconds;
+        final double progress = Math.max(0.0, Math.min(1.0, (double) seconds / (double) state.seconds));
+        // Move world border
+        final double sserporg = 1.0 - progress;
+        final double newSize = progress * initialBorderSize + sserporg * SUDDEN_DEATH_RADIUS * 2.0;
+        final Location spawn = world.getSpawnLocation();
+        final double newCenterX = progress * initialBorderCenter.getX() + sserporg * spawn.getX();
+        final double newCenterZ = progress * initialBorderCenter.getZ() + sserporg * spawn.getZ();
+        world.getWorldBorder().setCenter(newCenterX, newCenterZ);
+        world.getWorldBorder().setSize(newSize);
+        world.getWorldBorder().setWarningDistance(16);
+        // Time and mob spawning
+        if (timeLeft % 10 == 0) {
+            bossBar.progress((float) progress);
             if (timeLeft < limit) {
                 for (Player player : List.copyOf(world.getPlayers())) {
                     if (getSurvivalPlayer(player).isPlayer()) {
@@ -738,14 +769,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (timeLeft < limit && world.isDayTime()) {
             world.setTime(world.getTime() + 100L);
         }
-        if (restockTicks <= 0) {
-            restockTicks = (RESTOCK_SECONDS + (random.nextLong() % RESTOCK_VARIANCE) - (random.nextLong() % RESTOCK_VARIANCE)) * 20;
-        } else {
-            if (--restockTicks <= 0) {
-                restockPhase += 1;
-                restockAllChests();
-            }
-        }
         if (timeLeft <= 0) return State.COUNTDOWN_SUDDEN_DEATH;
         return null;
     }
@@ -753,25 +776,29 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     private void tryToSpawnMob(Player player) {
         if (spawnedMonsters.size() > 200) return;
         Location loc = player.getLocation();
-        Vector vec = new Vector(random.nextDouble(), 0.0, random.nextDouble());
+        Vector vec = new Vector(random.nextDouble() - 0.5, 0.0, random.nextDouble() - 0.5);
         double distance = 24.0 + random.nextDouble() * 24.0;
         vec = vec.normalize().multiply(distance);
         loc = loc.add(vec);
         Block block = loc.getBlock();
-        for (int i = 0; i < 8; i += 1) {
+        for (int i = 0; i < 16; i += 1) {
             if (!block.isEmpty()) break;
             block = block.getRelative(0, -1, 0);
         }
-        for (int i = 0; i < 8; i += 1) {
+        for (int i = 0; i < 16; i += 1) {
             if (block.isEmpty()) break;
             block = block.getRelative(0, 1, 0);
         }
-        if (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty()) return;
-        if (!block.getRelative(0, -1, 0).isSolid()) return;
+        if (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty()) {
+            return;
+        }
+        if (!block.getRelative(0, -1, 0).isSolid()) {
+            return;
+        }
         loc = block.getLocation().add(0.5, 0.0, 0.5);
         for (Player nearby : world.getPlayers()) {
             if (!getSurvivalPlayer(player).isPlayer()) continue;
-            if (loc.distanceSquared(nearby.getLocation()) < 16.0 * 16.0) {
+            if (loc.distanceSquared(nearby.getLocation()) < 64.0) {
                 return;
             }
         }
@@ -805,6 +832,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             });
         if (mob == null) return;
         spawnedMonsters.add(mob);
+        getLogger().info("Spawned: " + mob.getType() + ", " + Vec3i.of(block));
     }
 
     private State tickCountdownSuddenDeath(long ticks) {
@@ -885,8 +913,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    private List<ItemStack> randomPhaseItems(int index) {
-        List<LootItem> lootTable = phaseItems.get(Math.min(index, phaseItems.size() - 1));
+    private List<ItemStack> randomPhaseItems() {
+        final int index = random.nextInt(phaseItems.size());
+        List<LootItem> lootTable = phaseItems.get(index);
         if (lootTable.isEmpty()) throw new IllegalArgumentException("Restock phase empty: " + index);
         double chance = 0;
         for (LootItem lootItem : lootTable) chance += lootItem.chance;
@@ -990,9 +1019,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         npe.printStackTrace();
                     }
                     restockChests.add(blockState.getBlock());
-                    for (int i = 0; i <= restockPhase; ++i) {
-                        stockBlock(blockState.getBlock());
-                    }
+                    stockBlock(blockState.getBlock(), false);
                 }
             } else if (blockState instanceof Sign) {
                 final Sign sign = (Sign) blockState;
@@ -1101,26 +1128,13 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     blockLoop:
         for (Block block : restockChests) {
             Location blockLocation = block.getLocation();
-            // Near spawn?
-            if (restockPhase > 0 && blockLocation.distanceSquared(world.getSpawnLocation()) < rr) {
-                skipped++;
-                continue blockLoop;
-            }
-            if (stockBlock(block)) count++;
+            if (stockBlock(block, true)) count++;
         }
-        log("Phase " + restockPhase + ": Restocked " + count + " chests, skipped " + skipped);
-        new BukkitRunnable() {
-            @Override public void run() {
-                for (Player player : world.getPlayers()) {
-                    player.showTitle(Title.title(Component.empty(),
-                                                 text("Chests restocked", GREEN)));
-                    player.playSound(player.getEyeLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1f);
-                }
-            }
-        }.runTaskLater(this, 20 * 3);
+        log("Restocked " + count + " chests, skipped " + skipped);
     }
 
-    private boolean stockBlock(Block block) {
+    private boolean stockBlock(Block block, boolean always) {
+        if (!always && state != State.LOOTING  && state != State.FREE_FOR_ALL) return false;
         BlockState blockState = block.getState();
         if (blockState instanceof Chest) {
             stockChest(((Chest) blockState).getBlockInventory());
@@ -1133,13 +1147,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private void stockChest(Inventory inv) {
-        final int rolls = 1 + Math.max(0, random.nextInt(3) - random.nextInt(2));
         try {
-            for (int j = 0; j < rolls; j += 1) {
-                for (ItemStack item : randomPhaseItems(restockPhase)) {
-                    int i = random.nextInt(inv.getSize());
-                    inv.setItem(i, item.clone());
-                }
+            for (ItemStack item : randomPhaseItems()) {
+                int i = random.nextInt(inv.getSize());
+                inv.setItem(i, item.clone());
             }
         } catch (NullPointerException npe) {
             npe.printStackTrace();
@@ -1322,7 +1333,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (itemForKey("SpecialFirework").isSimilar(item)) {
             for (Player other : world.getPlayers()) {
                 if (other.equals(player) || !getSurvivalPlayer(other).isPlayer()) continue;
-                if (saveTag.useTeams && getSurvivalPlayer(player).team == getSurvivalPlayer(other).team) {
+                if (useTeams && getSurvivalPlayer(player).team == getSurvivalPlayer(other).team) {
                     continue;
                 }
                 other.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0, true, true, true));
@@ -1333,7 +1344,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             player.playSound(player.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 0.5f, 1f);
             return true;
         } else if (itemForKey("RespawnTotem").isSimilar(item)) {
-            if (!saveTag.useTeams) return false;
+            if (!useTeams) return false;
             SurvivalTeam team = sp.getTeam();
             if (team == null) return false;
             List<Player> options = new ArrayList<>();
@@ -1507,7 +1518,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             event.setCancelled(true);
             return;
         }
-        if (saveTag.useTeams && getSurvivalPlayer(damager).team == getSurvivalPlayer(damagee).team) {
+        if (useTeams && getSurvivalPlayer(damager).team == getSurvivalPlayer(damagee).team) {
             event.setCancelled(true);
             return;
         }
@@ -1521,7 +1532,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         Player damager = getPlayerDamager(event.getCombuster());
         if (damager == null) return;
         if (entity instanceof Player damagee) {
-            if (saveTag.useTeams && getSurvivalPlayer(damager).team == getSurvivalPlayer(damagee).team) {
+            if (useTeams && getSurvivalPlayer(damager).team == getSurvivalPlayer(damagee).team) {
                 event.setCancelled(true);
                 return;
             }
@@ -1535,7 +1546,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         Player shooter = getPlayerDamager(projectile);
         if (shooter == null) return;
         if (event.getHitEntity() instanceof Player target) {
-            if (saveTag.useTeams && getSurvivalPlayer(shooter).team == getSurvivalPlayer(target).team) {
+            if (useTeams && getSurvivalPlayer(shooter).team == getSurvivalPlayer(target).team) {
                 event.setCancelled(true);
                 return;
             }
@@ -1602,7 +1613,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             player.setGameMode(GameMode.SURVIVAL);
             makeImmobile(player, sp.getSpawnLocation());
         }
-        if (saveTag.useTeams) {
+        if (useTeams) {
             final int teamCount = 2;
             List<SurvivalPlayer> spList = getAlivePlayers();
             Collections.shuffle(spList, random);
@@ -1669,12 +1680,12 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 }
             }
         }
-        if (!saveTag.useTeams && winnerName != null) {
+        if (!useTeams && winnerName != null) {
             lines.add(text()
                       .append(text("Winner ", GRAY))
                       .append(text(winnerName, GOLD))
                       .build());
-        } else if (saveTag.useTeams && winnerTeam != null) {
+        } else if (useTeams && winnerTeam != null) {
             lines.add(text()
                       .append(text("Winner ", GRAY))
                       .append(winnerTeam.component)
@@ -1685,7 +1696,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             long s = secondsLeft % 60;
             lines.add(join(noSeparators(), text(tiny("time "), GRAY), text(m + "m " + s + "s", WHITE)));
         }
-        if (saveTag.useTeams) {
+        if (useTeams) {
             lines.add(join(noSeparators(), text(tiny("teams"), GRAY)));
             List<TeamScore> list = new ArrayList<>(teams.values());
             Collections.sort(list, (a, b) -> Integer.compare(b.alivePlayers, a.alivePlayers));
@@ -1817,7 +1828,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                                 "survival_games",
                                 TrophyCategory.MEDAL,
                                 TITLE,
-                                hi -> (saveTag.useTeams
+                                hi -> (useTeams
                                        ? "Survival Teams with " + hi.score + " point" + (hi.score == 1 ? "" : "s")
                                        : "Survival Games with " + hi.score + " point" + (hi.score == 1 ? "" : "s")));
     }

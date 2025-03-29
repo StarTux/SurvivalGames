@@ -45,6 +45,10 @@ public final class SurvivalGamesCommand implements TabExecutor {
             .completers(CommandArgCompleter.list("true", "false"))
             .description("Set event mode")
             .senderCaller(this::event);
+        rootNode.addChild("testing").arguments("true|false")
+            .completers(CommandArgCompleter.list("true", "false"))
+            .description("Set tesint mode")
+            .senderCaller(this::testing);
         rootNode.addChild("pause").arguments("true|false")
             .completers(CommandArgCompleter.list("true", "false"))
             .description("Set pause mode")
@@ -132,6 +136,15 @@ public final class SurvivalGamesCommand implements TabExecutor {
             plugin.save();
         }
         sender.sendMessage(text("Event mode: " + plugin.saveTag.event, YELLOW));
+        return true;
+    }
+
+    private boolean testing(CommandSender sender, String[] args) {
+        if (args.length > 1) return false;
+        if (args.length >= 1) {
+            plugin.setTesting(CommandArgCompleter.requireBoolean(args[0]));
+        }
+        sender.sendMessage(text("Testing mode: " + plugin.isTesting(), YELLOW));
         return true;
     }
 

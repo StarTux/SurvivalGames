@@ -57,6 +57,7 @@ import org.bukkit.block.Barrel;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
 import org.bukkit.configuration.ConfigurationSection;
@@ -1009,7 +1010,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (processedChunks.contains(cc)) return;
         processedChunks.add(cc);
         for (BlockState blockState : chunk.getTileEntities()) {
-            if (blockState instanceof Chest || blockState instanceof Barrel) {
+            if (blockState instanceof Chest || blockState instanceof Barrel || blockState instanceof ShulkerBox) {
                 Block block = blockState.getBlock();
                 if (restockChests.contains(block)) {
                     warn(String.format("Duplicate chest scanned at %d,%d,%d", block.getX(), block.getY(), block.getZ()));
@@ -1137,11 +1138,14 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     private boolean stockBlock(Block block, boolean always) {
         if (!always && state != State.LOOTING  && state != State.FREE_FOR_ALL) return false;
         BlockState blockState = block.getState();
-        if (blockState instanceof Chest) {
-            stockChest(((Chest) blockState).getBlockInventory());
+        if (blockState instanceof Chest chest) {
+            stockChest(chest.getBlockInventory());
             return true;
-        } else if (blockState instanceof Barrel) {
-            stockChest(((Barrel) blockState).getInventory());
+        } else if (blockState instanceof Barrel barrel) {
+            stockChest(barrel.getInventory());
+            return true;
+        } else if (blockState instanceof ShulkerBox shulkerBox) {
+            stockChest(shulkerBox.getInventory());
             return true;
         }
         return false;

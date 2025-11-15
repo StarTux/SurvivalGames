@@ -155,7 +155,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     static final List<String> WINNER_TITLES = List.of("Survivor", "Victor", "SurviveTogether", "Arrow", "SpectralArrow");
     protected List<Highscore> highscore = List.of();
     protected List<Component> sidebarHighscore = List.of();
-    private static final Component TITLE = text("Survival Games", DARK_RED, BOLD);
+    public static final Component TITLE = text("Survival Games", DARK_RED, BOLD);
     public static final MinigameMatchType MINIGAME_TYPE = MinigameMatchType.SURVIVAL_GAMES;
     private double initialBorderSize;
     private Location initialBorderCenter;
@@ -1826,15 +1826,5 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     protected void computeHighscore() {
         this.highscore = Highscore.of(saveTag.scores);
         this.sidebarHighscore = Highscore.sidebar(highscore, TrophyCategory.MEDAL);
-    }
-
-    protected int rewardHighscore() {
-        return Highscore.reward(saveTag.scores,
-                                "survival_games",
-                                TrophyCategory.MEDAL,
-                                TITLE,
-                                hi -> (useTeams
-                                       ? "Survival Teams with " + hi.score + " point" + (hi.score == 1 ? "" : "s")
-                                       : "Survival Games with " + hi.score + " point" + (hi.score == 1 ? "" : "s")));
     }
 }

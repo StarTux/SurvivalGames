@@ -266,7 +266,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         credits.clear();
         world.setAutoSave(false);
         world.setDifficulty(Difficulty.HARD);
-        world.setPVP(false);
         world.setTime(1000L);
         world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
         world.setGameRule(GameRule.DO_TILE_DROPS, false);
@@ -276,6 +275,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
         world.setGameRule(GameRule.KEEP_INVENTORY, false);
         world.setGameRule(GameRule.DO_MOB_LOOT, true);
+        world.setGameRule(GameRule.PVP, false);
         world.setStorm(false);
         world.setThundering(false);
         Location spawn = world.getSpawnLocation();
@@ -564,7 +564,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 player.sendMessage(text("Fight!", RED));
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 0.5f, 1f);
             }
-            world.setPVP(true);
+            world.setGameRule(GameRule.PVP, true);
             break;
         case COUNTDOWN_SUDDEN_DEATH:
             bossBar.name(text("Sudden Death", DARK_RED));
@@ -581,7 +581,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     player.teleport(world.getSpawnLocation());
                 }
             }
-            world.setPVP(false);
+            world.setGameRule(GameRule.PVP, false);
             world.setTime(0);
             for (Mob mob : spawnedMonsters) {
                 mob.remove();
@@ -597,7 +597,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     makeMobile(player);
                 }
             }
-            world.setPVP(true);
+            world.setGameRule(GameRule.PVP, true);
             world.getWorldBorder().setCenter(world.getSpawnLocation());
             world.getWorldBorder().setSize(SUDDEN_DEATH_RADIUS * 2.0);
             world.getWorldBorder().setWarningDistance(0);
@@ -1435,7 +1435,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         onUse(player, event, item);
         boolean isFlint = item.getType() == Material.FLINT_AND_STEEL;
-        if (isFlint && world.getPVP() && event.getRightClicked() instanceof Player) {
+        if (isFlint && world.getGameRuleValue(GameRule.PVP) && event.getRightClicked() instanceof Player) {
             item.subtract(1);
             event.getRightClicked().setFireTicks(event.getRightClicked().getFireTicks() + 20 * 20);
             event.setCancelled(true);

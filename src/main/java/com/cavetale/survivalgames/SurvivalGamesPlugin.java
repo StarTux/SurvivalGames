@@ -1282,7 +1282,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             player.setHealth(20.0);
             return;
         }
-        Players.reset(player);
         getSurvivalPlayer(player).setSpectator();
         player.setGameMode(GameMode.SPECTATOR);
         // Score

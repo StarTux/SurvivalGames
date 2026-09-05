@@ -8,7 +8,16 @@ description: SurvivalGames mini game
 authors: [ StarTux ]
 website: https://cavetale.com
 
-depend: [Mytems, Core, AFK, Title, Fam, Spawn, Creative]
+depend:
+- Mytems
+- Core
+- AFK
+- Title
+- Fam
+- Spawn
+- Creative
+- Kit
+
 softdepend: []
 
 commands:

@@ -7,6 +7,7 @@ import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.winthier.creative.BuildWorld;
+import com.winthier.kit.Kits;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -194,6 +195,7 @@ public final class SurvivalGamesCommand implements TabExecutor {
                                             : "Survival Games with " + hi.score + " point" + (hi.score == 1 ? "" : "s")));
         sender.sendMessage(text(count + " scores rewarded", AQUA));
         Highscore.rewardMoneyWithFeedback(sender, plugin, plugin.getSaveTag().getScores(), "Survival Games");
+        Kits.autoCreateKit(sender, "survival_games", plugin.getSaveTag().getScores().keySet());
     }
 
     private void skip(CommandSender sender) {

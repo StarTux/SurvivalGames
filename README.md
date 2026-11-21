@@ -1,6 +1,6 @@
 # SurvivalGames
 
-SurvivalGames is Cavetale’s last-player-standing minigame for Paper. When at least two players are in the lobby, they can vote on an arena. Each round runs in a temporary copy of the winning map.
+SurvivalGames is Cavetale's last-player-standing minigame for Paper. When at least two players are in the lobby, they can vote on an arena. Each round runs in a temporary copy of the winning map.
 
 Players start on two teams and have 45 seconds to loot before PvP begins. The locator bar shows nearby players in team colors. Eliminated players can spectate, and a teammate with a respawn totem can bring them back. Once only one team remains, its survivors turn on each other for the individual win. A shrinking border and sudden death bring long rounds to a close.
 
@@ -14,7 +14,7 @@ Players start on two teams and have 45 seconds to loot before PvP begins. The lo
 | `/sg stop` | `survivalgames.admin` | End the round and return arena players to the lobby. |
 | `/sg pause [true/false]` | `survivalgames.admin` | Pause or resume automatic lobby voting. Omit the argument to check its status. |
 | `/sg event [true/false]` | `survivalgames.admin` | Enable or disable event scoring and rewards. Omit the argument to check its status. |
-| `/sg score add <player> <amount>` | `survivalgames.admin` | Adjust a player’s event score. Use a negative amount to subtract points. |
+| `/sg score add <player> <amount>` | `survivalgames.admin` | Adjust a player's event score. Use a negative amount to subtract points. |
 | `/sg score reward` | `survivalgames.admin` | Award medals and money from the event standings and create the participant kit. |
 | `/sg reload` | `survivalgames.admin` | Reload the plugin configuration, custom items, and loot tables. |
 

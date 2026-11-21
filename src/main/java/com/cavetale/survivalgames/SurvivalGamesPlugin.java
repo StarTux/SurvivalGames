@@ -234,6 +234,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private void exit(Player player) {
+        if (player.getWorld() == world) clearTeamColor(player);
         restoreLocator(player);
         if (player.getGameMode() == GameMode.SPECTATOR) return;
         player.setWalkSpeed(0.2f);
@@ -256,7 +257,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private void onWorldLoaded(BuildWorld theBuildWorld, World theWorld) {
-        for (final Player player : Bukkit.getOnlinePlayers()) restoreLocator(player);
+        for (final Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getWorld() == world) clearTeamColor(player);
+            restoreLocator(player);
+        }
         totalTicks = 0;
         stateTicks = 0;
         restockTicks = 0;
@@ -996,6 +1000,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             return;
         }
         final SurvivalPlayer survivalPlayer = getSurvivalPlayer(player);
+        applyTeamColor(player);
         applyLocator(player);
         if (survivalPlayer.isSpectator()) {
             player.setGameMode(GameMode.SPECTATOR);
@@ -1023,10 +1028,23 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     private void onPlayerChangedWorld(final PlayerChangedWorldEvent event) {
         final Player player = event.getPlayer();
         if (player.getWorld() == world) {
+            applyTeamColor(player);
             applyLocator(player);
         } else {
+            if (event.getFrom() == world) clearTeamColor(player);
             restoreLocator(player);
         }
+    }
+
+    private void applyTeamColor(final Player player) {
+        if (player.getWorld() != world) return;
+        final SurvivalPlayer sp = survivalPlayers.get(player.getUniqueId());
+        if (sp != null && sp.team != null) TitlePlugin.getInstance().setColor(player, sp.team.color);
+    }
+
+    private void clearTeamColor(final Player player) {
+        final SurvivalPlayer sp = survivalPlayers.get(player.getUniqueId());
+        if (sp != null && sp.team != null) TitlePlugin.getInstance().setColor(player, null);
     }
 
     private void applyLocator(final Player player) {
@@ -1679,7 +1697,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 SurvivalPlayer thePlayer = spList.get(i);
                 SurvivalTeam theTeam = SurvivalTeam.values()[i % teamCount];
                 thePlayer.team = theTeam;
-                TitlePlugin.getInstance().setColor(thePlayer.getPlayer(), theTeam.color);
+                applyTeamColor(thePlayer.getPlayer());
                 applyLocator(thePlayer.getPlayer());
             }
             for (int i = 0; i < teamCount; i += 1) {
@@ -1697,16 +1715,16 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             mob.remove();
         }
         spawnedMonsters.clear();
-        survivalPlayers.clear();
         for (Player player : world.getPlayers()) {
+            clearTeamColor(player);
             restoreLocator(player);
             if (!player.isPermissionSet("group.streamer") || !player.hasPermission("group.streamer")) {
                 Players.reset(player);
-                TitlePlugin.getInstance().setColor(player, null);
                 player.setGameMode(GameMode.ADVENTURE);
             }
             Spawn.warp(player);
         }
+        survivalPlayers.clear();
         removeWorld();
         onStateChange(state, State.IDLE);
         state = State.IDLE;

@@ -45,7 +45,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Difficulty;
 import org.bukkit.GameMode;
-import org.bukkit.GameRule;
+import org.bukkit.GameRules;
 import org.bukkit.Instrument;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -268,15 +268,15 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         world.setAutoSave(false);
         world.setDifficulty(Difficulty.HARD);
         world.setTime(1000L);
-        world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
-        world.setGameRule(GameRule.DO_TILE_DROPS, false);
-        world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
-        world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
-        world.setGameRule(GameRule.NATURAL_REGENERATION, true);
-        world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
-        world.setGameRule(GameRule.KEEP_INVENTORY, false);
-        world.setGameRule(GameRule.DO_MOB_LOOT, true);
-        world.setGameRule(GameRule.PVP, false);
+        world.setGameRule(GameRules.ADVANCE_TIME, true);
+        world.setGameRule(GameRules.BLOCK_DROPS, false);
+        world.setGameRule(GameRules.ADVANCE_WEATHER, false);
+        world.setGameRule(GameRules.SHOW_DEATH_MESSAGES, true);
+        world.setGameRule(GameRules.NATURAL_HEALTH_REGENERATION, true);
+        world.setGameRule(GameRules.ENTITY_DROPS, true);
+        world.setGameRule(GameRules.KEEP_INVENTORY, false);
+        world.setGameRule(GameRules.MOB_DROPS, true);
+        world.setGameRule(GameRules.PVP, false);
         world.setStorm(false);
         world.setThundering(false);
         Location spawn = world.getSpawnLocation();
@@ -565,7 +565,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 player.sendMessage(text("Fight!", RED));
                 player.playSound(player.getEyeLocation(), Sound.ENTITY_WITHER_SPAWN, 0.5f, 1f);
             }
-            world.setGameRule(GameRule.PVP, true);
+            world.setGameRule(GameRules.PVP, true);
             break;
         case COUNTDOWN_SUDDEN_DEATH:
             bossBar.name(text("Sudden Death", DARK_RED));
@@ -582,7 +582,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     player.teleport(world.getSpawnLocation());
                 }
             }
-            world.setGameRule(GameRule.PVP, false);
+            world.setGameRule(GameRules.PVP, false);
             world.setTime(0);
             for (Mob mob : spawnedMonsters) {
                 mob.remove();
@@ -598,11 +598,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                     makeMobile(player);
                 }
             }
-            world.setGameRule(GameRule.PVP, true);
+            world.setGameRule(GameRules.PVP, true);
             world.getWorldBorder().setCenter(world.getSpawnLocation());
             world.getWorldBorder().setSize(SUDDEN_DEATH_RADIUS * 2.0);
             world.getWorldBorder().setWarningDistance(0);
-            world.setGameRule(GameRule.NATURAL_REGENERATION, false);
+            world.setGameRule(GameRules.NATURAL_HEALTH_REGENERATION, false);
             break;
         case END:
             bossBar.name(text("The End", AQUA));
@@ -1055,9 +1055,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         }
                         world.setTime(time);
                         if ("lock".equalsIgnoreCase(PlainTextComponentSerializer.plainText().serialize(sign.getSide(Side.FRONT).line(2)))) {
-                            world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
+                            world.setGameRule(GameRules.ADVANCE_TIME, false);
                         } else {
-                            world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
+                            world.setGameRule(GameRules.ADVANCE_TIME, true);
                         }
                         blockState.getBlock().setType(Material.AIR);
                     }
@@ -1435,7 +1435,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         onUse(player, event, item);
         boolean isFlint = item.getType() == Material.FLINT_AND_STEEL;
-        if (isFlint && world.getGameRuleValue(GameRule.PVP) && event.getRightClicked() instanceof Player) {
+        if (isFlint && world.getGameRuleValue(GameRules.PVP) && event.getRightClicked() instanceof Player) {
             item.subtract(1);
             event.getRightClicked().setFireTicks(event.getRightClicked().getFireTicks() + 20 * 20);
             event.setCancelled(true);

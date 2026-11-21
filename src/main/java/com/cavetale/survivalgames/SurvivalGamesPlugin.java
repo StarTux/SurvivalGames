@@ -1217,11 +1217,14 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         return false;
     }
 
-    private void stockChest(Inventory inv) {
+    private void stockChest(final Inventory inv) {
         try {
-            for (ItemStack item : randomPhaseItems()) {
-                int i = random.nextInt(inv.getSize());
-                inv.setItem(i, item.clone());
+            final List<Integer> slots = new ArrayList<>(inv.getSize());
+            for (int i = 0; i < inv.getSize(); i += 1) slots.add(i);
+            for (final ItemStack item : randomPhaseItems()) {
+                if (slots.isEmpty()) break;
+                final int slot = slots.remove(random.nextInt(slots.size()));
+                inv.setItem(slot, item.clone());
             }
         } catch (NullPointerException npe) {
             npe.printStackTrace();

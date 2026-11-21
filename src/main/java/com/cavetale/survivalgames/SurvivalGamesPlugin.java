@@ -1509,10 +1509,11 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         onUse(player, event, item);
         boolean isFlint = item.getType() == Material.FLINT_AND_STEEL;
-        if (isFlint && world.getGameRuleValue(GameRules.PVP) && event.getRightClicked() instanceof Player) {
-            item.subtract(1);
-            event.getRightClicked().setFireTicks(event.getRightClicked().getFireTicks() + 20 * 20);
+        if (isFlint && world.getGameRuleValue(GameRules.PVP) && event.getRightClicked() instanceof Player target) {
             event.setCancelled(true);
+            if (useTeams && getSurvivalPlayer(player).team == getSurvivalPlayer(target).team) return;
+            item.subtract(1);
+            target.setFireTicks(target.getFireTicks() + 20 * 20);
         }
         switch (event.getRightClicked().getType()) {
         case ITEM_FRAME:

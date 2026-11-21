@@ -946,23 +946,17 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         if (location != null) event.setSpawnLocation(location);
     }
 
-    public Location getSpawnLocation(Player player) {
-        SurvivalPlayer sp = getSurvivalPlayer(player);
-        switch (state) {
-        case SUDDEN_DEATH:
-        case COUNTDOWN:
-        case COUNTDOWN_SUDDEN_DEATH:
-            return sp.isPlayer()
-                ? getSurvivalPlayer(player).getSpawnLocation()
-                : world.getSpawnLocation();
-        case FREE_FOR_ALL:
-            return sp.isPlayer()
-                ? null
-                : world.getSpawnLocation();
-        case IDLE:
-        default:
-            return Spawn.get();
-        }
+    public Location getSpawnLocation(final Player player) {
+        final SurvivalPlayer sp = getSurvivalPlayer(player);
+        return switch (state) {
+        case IDLE, END -> Spawn.get();
+        case COUNTDOWN, COUNTDOWN_SUDDEN_DEATH, SUDDEN_DEATH -> sp.isPlayer()
+            ? sp.getSpawnLocation()
+            : world.getSpawnLocation();
+        case LOOTING, FREE_FOR_ALL -> sp.isPlayer()
+            ? null
+            : world.getSpawnLocation();
+        };
     }
 
     @EventHandler(ignoreCancelled = true)

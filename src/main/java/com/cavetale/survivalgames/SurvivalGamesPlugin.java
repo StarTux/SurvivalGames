@@ -20,6 +20,7 @@ import com.winthier.creative.review.MapReview;
 import com.winthier.creative.vote.MapVote;
 import com.winthier.spawn.Spawn;
 import com.winthier.title.TitlePlugin;
+import io.papermc.paper.event.player.AsyncPlayerSpawnLocationEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -109,7 +111,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
-import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 import static com.cavetale.core.font.Unicode.tiny;
 import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.space;
@@ -954,23 +955,35 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    public void onPlayerSpawnLocation(PlayerSpawnLocationEvent event) {
-        Player player = event.getPlayer();
-        Location location = getSpawnLocation(player);
-        if (location != null) event.setSpawnLocation(location);
+    public void onAsyncPlayerSpawnLocation(final AsyncPlayerSpawnLocationEvent event) {
+        final UUID uuid = event.getConnection().getProfile().getId();
+        try {
+            final Location location = Bukkit.getScheduler().callSyncMethod(this, () -> getSpawnLocation(uuid)).get();
+            if (location != null) event.setSpawnLocation(location);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (final ExecutionException e) {
+            throw new IllegalStateException("Could not resolve spawn location for " + uuid, e.getCause());
+        }
     }
 
     public Location getSpawnLocation(final Player player) {
-        final SurvivalPlayer sp = getSurvivalPlayer(player);
-        return switch (state) {
+        return getSpawnLocation(player.getUniqueId());
+    }
+
+    private Location getSpawnLocation(final UUID uuid) {
+        final SurvivalPlayer sp = survivalPlayers.get(uuid);
+        final boolean playing = sp != null && sp.isPlayer();
+        final Location location = switch (state) {
         case IDLE, END -> Spawn.get();
-        case COUNTDOWN, COUNTDOWN_SUDDEN_DEATH, SUDDEN_DEATH -> sp.isPlayer()
+        case COUNTDOWN, COUNTDOWN_SUDDEN_DEATH, SUDDEN_DEATH -> playing
             ? sp.getSpawnLocation()
             : world.getSpawnLocation();
-        case LOOTING, FREE_FOR_ALL -> sp.isPlayer()
+        case LOOTING, FREE_FOR_ALL -> playing
             ? null
             : world.getSpawnLocation();
         };
+        return location != null ? location.clone() : null;
     }
 
     @EventHandler(ignoreCancelled = true)

@@ -43,6 +43,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.Color;
 import org.bukkit.Difficulty;
 import org.bukkit.GameMode;
 import org.bukkit.GameRules;
@@ -53,6 +54,8 @@ import org.bukkit.Note;
 import org.bukkit.Sound;
 import org.bukkit.Tag;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Barrel;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -89,6 +92,7 @@ import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -119,6 +123,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     static final long RESTOCK_SECONDS = 100;
     static final long RESTOCK_VARIANCE = 15;
     static final double SUDDEN_DEATH_RADIUS = 32;
+    private static final double LOCATOR_RANGE = 64.0;
+    private record LocatorSettings(Color color, double receiveRange) { }
+    private final Map<UUID, LocatorSettings> previousLocatorSettings = new HashMap<>();
     // minigame stuf
     BuildWorld buildWorld;
     World world;
@@ -226,6 +233,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private void exit(Player player) {
+        restoreLocator(player);
         if (player.getGameMode() == GameMode.SPECTATOR) return;
         player.setWalkSpeed(0.2f);
         player.setAllowFlight(false);
@@ -247,6 +255,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     }
 
     private void onWorldLoaded(BuildWorld theBuildWorld, World theWorld) {
+        for (final Player player : Bukkit.getOnlinePlayers()) restoreLocator(player);
         totalTicks = 0;
         stateTicks = 0;
         restockTicks = 0;
@@ -275,6 +284,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         world.setGameRule(GameRules.NATURAL_HEALTH_REGENERATION, true);
         world.setGameRule(GameRules.ENTITY_DROPS, true);
         world.setGameRule(GameRules.KEEP_INVENTORY, false);
+        world.setGameRule(GameRules.LOCATOR_BAR, true);
         world.setGameRule(GameRules.MOB_DROPS, true);
         world.setGameRule(GameRules.PVP, false);
         world.setStorm(false);
@@ -431,12 +441,13 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 }
                 if (aliveCount > 1) winnerTeam = null;
                 if (aliveCount == 1) {
+                    useTeams = false;
                     for (Player player : world.getPlayers()) {
+                        applyLocator(player);
                         player.showTitle(Title.title(text("No more teams!", RED),
                                                      text("No more teams!", RED)));
                         player.sendMessage(text("No more teams!", RED));
                     }
-                    useTeams = false;
                 }
             } else {
                 for (SurvivalPlayer info : survivalPlayers.values()) {
@@ -972,6 +983,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             return;
         }
         final SurvivalPlayer survivalPlayer = getSurvivalPlayer(player);
+        applyLocator(player);
         if (survivalPlayer.isSpectator()) {
             player.setGameMode(GameMode.SPECTATOR);
             return;
@@ -992,6 +1004,32 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerQuit(PlayerQuitEvent event) {
         exit(event.getPlayer());
+    }
+
+    @EventHandler
+    private void onPlayerChangedWorld(final PlayerChangedWorldEvent event) {
+        final Player player = event.getPlayer();
+        if (player.getWorld() == world) {
+            applyLocator(player);
+        } else {
+            restoreLocator(player);
+        }
+    }
+
+    private void applyLocator(final Player player) {
+        final SurvivalPlayer sp = survivalPlayers.get(player.getUniqueId());
+        if (player.getWorld() != world || sp == null || !sp.isPlayer() || sp.team == null) return;
+        final AttributeInstance range = player.getAttribute(Attribute.WAYPOINT_RECEIVE_RANGE);
+        previousLocatorSettings.computeIfAbsent(sp.uuid, uuid -> new LocatorSettings(player.getWaypointColor(), range.getBaseValue()));
+        range.setBaseValue(LOCATOR_RANGE);
+        player.setWaypointColor(Color.fromRGB((useTeams ? sp.team.color : RED).value()));
+    }
+
+    private void restoreLocator(final Player player) {
+        final LocatorSettings previous = previousLocatorSettings.remove(player.getUniqueId());
+        if (previous == null) return;
+        player.getAttribute(Attribute.WAYPOINT_RECEIVE_RANGE).setBaseValue(previous.receiveRange());
+        player.setWaypointColor(previous.color());
     }
 
     @EventHandler
@@ -1277,6 +1315,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         final SurvivalPlayer sp = getSurvivalPlayer(player);
         if (sp.isSpectator()) return;
         sp.setSpectator();
+        restoreLocator(player);
         // Score
         Player killer = player.getKiller();
         if (killer != null && !killer.equals(player)) {
@@ -1367,6 +1406,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             revivePlayer.teleport(player);
             Players.reset(revivePlayer);
             getSurvivalPlayer(revivePlayer).setPlayer();
+            applyLocator(revivePlayer);
             for (Player target : world.getPlayers()) {
                 target.sendMessage(join(noSeparators(),
                                         revivePlayer.displayName(),
@@ -1627,6 +1667,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 SurvivalTeam theTeam = SurvivalTeam.values()[i % teamCount];
                 thePlayer.team = theTeam;
                 TitlePlugin.getInstance().setColor(thePlayer.getPlayer(), theTeam.color);
+                applyLocator(thePlayer.getPlayer());
             }
             for (int i = 0; i < teamCount; i += 1) {
                 SurvivalTeam team = SurvivalTeam.values()[i];
@@ -1645,6 +1686,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         spawnedMonsters.clear();
         survivalPlayers.clear();
         for (Player player : world.getPlayers()) {
+            restoreLocator(player);
             if (!player.isPermissionSet("group.streamer") || !player.hasPermission("group.streamer")) {
                 Players.reset(player);
                 TitlePlugin.getInstance().setColor(player, null);

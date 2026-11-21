@@ -38,6 +38,7 @@ public final class SurvivalPlayer {
     void setPlayer() {
         type = Type.PLAYER;
         didPlay = true;
+        lastDamager = null;
     }
 
     void setSpectator() {

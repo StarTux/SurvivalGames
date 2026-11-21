@@ -746,7 +746,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     private State tickFreeForAll(long ticks) {
         final long timeLeft = state.seconds * 20 - ticks;
-        final long limit = 60 * 4; // 4 final minutes
+        final long finalPressureTicks = 4L * 60 * 20;
         final long seconds = timeLeft / 20;
         secondsLeft = seconds;
         final double progress = Math.max(0.0, Math.min(1.0, (double) seconds / (double) state.seconds));
@@ -762,7 +762,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         // Time and mob spawning
         if (timeLeft % 10 == 0) {
             bossBar.progress((float) progress);
-            if (timeLeft < limit) {
+            if (timeLeft <= finalPressureTicks) {
                 for (Player player : List.copyOf(world.getPlayers())) {
                     if (getSurvivalPlayer(player).isPlayer()) {
                         tryToSpawnMob(player);
@@ -770,7 +770,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 }
             }
         }
-        if (timeLeft < limit && world.isDayTime()) {
+        if (timeLeft <= finalPressureTicks && world.isDayTime()) {
             world.setTime(world.getTime() + 100L);
         }
         if (timeLeft <= 0) return State.COUNTDOWN_SUDDEN_DEATH;

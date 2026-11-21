@@ -446,18 +446,15 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 sp.setDiscTicks(discTicks + 1);
             }
         }
+        if (useTeams) updateTeamCounts();
         State newState = null;
         if (!testing && state != State.END && state != State.COUNTDOWN && state != State.LOOTING) {
             int aliveCount = 0;
             if (useTeams) {
-                for (TeamScore teamScore : teams.values()) {
-                    teamScore.alivePlayers = 0;
-                }
-                for (SurvivalPlayer sp : getAlivePlayers()) {
-                    TeamScore teamScore = teams.get(sp.team);
-                    if (teamScore.alivePlayers == 0) aliveCount += 1;
-                    teamScore.alivePlayers += 1;
-                    winnerTeam = sp.team;
+                for (final TeamScore teamScore : teams.values()) {
+                    if (teamScore.alivePlayers == 0) continue;
+                    aliveCount += 1;
+                    winnerTeam = teamScore.team;
                 }
                 if (aliveCount > 1) winnerTeam = null;
                 if (aliveCount == 1) {
@@ -1708,6 +1705,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 SurvivalTeam team = SurvivalTeam.values()[i];
                 teams.put(team, new TeamScore(team));
             }
+            updateTeamCounts();
         }
         state = State.COUNTDOWN;
         onStateChange(state, state);
@@ -1844,6 +1842,13 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         }
         if (spawnedMonsters.contains(event.getTarget())) {
             event.setCancelled(true);
+        }
+    }
+
+    private void updateTeamCounts() {
+        for (final TeamScore teamScore : teams.values()) teamScore.alivePlayers = 0;
+        for (final SurvivalPlayer sp : survivalPlayers.values()) {
+            if (sp.isPlayer()) teams.get(sp.team).alivePlayers += 1;
         }
     }
 

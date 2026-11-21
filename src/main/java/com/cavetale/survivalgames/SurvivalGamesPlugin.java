@@ -994,7 +994,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         final Player player = event.getPlayer();
         enter(player);
-        if (state == State.IDLE) {
+        if (state == State.IDLE || state == State.END) {
             Players.reset(player);
             player.setGameMode(GameMode.ADVENTURE);
             return;

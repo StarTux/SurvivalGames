@@ -8,6 +8,11 @@ import org.bukkit.potion.PotionEffect;
 public final class Players {
     private Players() { }
 
+    static void setHealthIfAlive(final Player player, final double health) {
+        if (player.isDead() || player.getGameMode() == GameMode.SPECTATOR) return;
+        player.setHealth(health);
+    }
+
     public static void reset(Player player) {
         player.setGameMode(GameMode.SURVIVAL);
         // flight
@@ -27,7 +32,7 @@ public final class Players {
         player.resetPlayerTime();
         player.resetPlayerWeather();
         // health
-        player.setHealth(20.0);
+        setHealthIfAlive(player, 20.0);
         // food
         player.setFoodLevel(20);
         player.setSaturation(20.0f);

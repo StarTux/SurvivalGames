@@ -872,7 +872,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             for (Player player : world.getPlayers()) {
                 if (!getSurvivalPlayer(player).isPlayer()) continue;
                 player.setFoodLevel(Math.max(0, player.getFoodLevel() - 1));
-                player.setHealth(Math.max(0.0, player.getHealth() - 1.0));
+                Players.setHealthIfAlive(player, Math.max(0.0, player.getHealth() - 1.0));
             }
         }
         return null;
@@ -1273,14 +1273,10 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     public void onPlayerDeath(PlayerDeathEvent event) {
         final Player player = event.getEntity();
         if (!player.getWorld().equals(world)) return;
-        if (getSurvivalPlayer(player).isSpectator()) {
-            player.teleport(world.getSpawnLocation());
-            player.setGameMode(GameMode.SPECTATOR);
-            player.setHealth(20.0);
-            return;
-        }
-        getSurvivalPlayer(player).setSpectator();
         player.setGameMode(GameMode.SPECTATOR);
+        final SurvivalPlayer sp = getSurvivalPlayer(player);
+        if (sp.isSpectator()) return;
+        sp.setSpectator();
         // Score
         Player killer = player.getKiller();
         if (killer != null && !killer.equals(player)) {
@@ -1360,7 +1356,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             for (SurvivalPlayer other : survivalPlayers.values()) {
                 if (other.getTeam() != team) continue;
                 Player otherPlayer = other.getPlayer();
-                if (otherPlayer == null || otherPlayer.getGameMode() != GameMode.SPECTATOR) continue;
+                if (otherPlayer == null || otherPlayer.isDead() || otherPlayer.getGameMode() != GameMode.SPECTATOR) continue;
                 options.add(otherPlayer);
             }
             if (options.isEmpty()) {
@@ -1572,9 +1568,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 Bukkit.getScheduler().runTask(this, () -> {
                         player.setFallDistance(0);
                         player.teleport(sp.getSpawnLocation());
-                        if (getSurvivalPlayer(player).isPlayer()) {
+                        if (getSurvivalPlayer(player).isPlayer() && !player.isDead() && player.getGameMode() != GameMode.SPECTATOR) {
                             Players.reset(player);
-                            player.setHealth(0);
+                            Players.setHealthIfAlive(player, 0);
                         }
                     });
             } else {

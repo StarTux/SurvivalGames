@@ -96,6 +96,7 @@ import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -1314,6 +1315,14 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         player.getWorld().strikeLightningEffect(player.getLocation());
         // Record end time
         getSurvivalPlayer(player).setEndTime(new Date());
+    }
+
+    @EventHandler
+    public void onPlayerRespawn(final PlayerRespawnEvent event) {
+        final Player player = event.getPlayer();
+        if (event.getRespawnReason() != PlayerRespawnEvent.RespawnReason.DEATH || player.getWorld() != world) return;
+        final SurvivalPlayer sp = survivalPlayers.get(player.getUniqueId());
+        if (sp != null && sp.isSpectator()) event.setRespawnLocation(player.getLocation());
     }
 
     private void reduceItemInHand(Player player) {

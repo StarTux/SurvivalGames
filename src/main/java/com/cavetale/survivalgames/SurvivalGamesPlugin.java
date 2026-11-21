@@ -431,6 +431,21 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 player.setCompassTarget(loc);
             }
         }
+        // Check for disconnects
+        for (SurvivalPlayer info : List.copyOf(survivalPlayers.values())) {
+            SurvivalPlayer sp = getSurvivalPlayer(info.getUuid());
+            if (!info.isOnline()) {
+                // Kick players who disconnect too long
+                long discTicks = sp.getDiscTicks();
+                if (state == State.SUDDEN_DEATH) {
+                    survivalPlayers.remove(info.uuid);
+                } else if (discTicks > 20 * 60) {
+                    log("Kicking " + sp.getName() + " because they were disconnected too long");
+                    survivalPlayers.remove(info.uuid);
+                }
+                sp.setDiscTicks(discTicks + 1);
+            }
+        }
         State newState = null;
         if (!testing && state != State.END && state != State.COUNTDOWN && state != State.LOOTING) {
             int aliveCount = 0;
@@ -487,21 +502,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 winnerName = null;
                 log("Ending because there are no survivors!");
                 newState = State.END;
-            }
-        }
-        // Check for disconnects
-        for (SurvivalPlayer info : List.copyOf(survivalPlayers.values())) {
-            SurvivalPlayer sp = getSurvivalPlayer(info.getUuid());
-            if (!info.isOnline()) {
-                // Kick players who disconnect too long
-                long discTicks = sp.getDiscTicks();
-                if (state == State.SUDDEN_DEATH) {
-                    survivalPlayers.remove(info.uuid);
-                } else if (discTicks > 20 * 60) {
-                    log("Kicking " + sp.getName() + " because they were disconnected too long");
-                    survivalPlayers.remove(info.uuid);
-                }
-                sp.setDiscTicks(discTicks + 1);
             }
         }
         if (newState == null) newState = tickState();

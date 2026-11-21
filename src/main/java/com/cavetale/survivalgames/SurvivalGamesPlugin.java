@@ -612,6 +612,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
             if (saveTag.event) {
                 for (SurvivalPlayer sp : survivalPlayers.values()) {
+                    if (!sp.didPlay) continue;
                     if (sp.winner) {
                         String cmd = "titles unlockset " + sp.name + " " + String.join(" ", WINNER_TITLES);
                         log("Running command: " + cmd);
@@ -622,6 +623,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                         saveTag.addScore(sp.uuid, 1); // Game played
                     }
                 }
+                computeHighscore();
             }
             for (Player player : world.getPlayers()) {
                 player.setGameMode(GameMode.SPECTATOR);

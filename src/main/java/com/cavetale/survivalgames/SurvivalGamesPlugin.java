@@ -125,6 +125,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     static final long RESTOCK_VARIANCE = 15;
     static final double SUDDEN_DEATH_RADIUS = 32;
     private static final double LOCATOR_RANGE = 64.0;
+    private static final int MONSTERS_PER_PLAYER = 4;
+    private static final int MAX_ARENA_MONSTERS = 48;
+    private static final double NEARBY_MONSTER_RADIUS = 48.0;
     private record LocatorSettings(Color color, double receiveRange) { }
     private final Map<UUID, LocatorSettings> previousLocatorSettings = new HashMap<>();
     // minigame stuf
@@ -280,7 +283,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         landMines.clear();
         credits.clear();
         world.setAutoSave(false);
-        world.setDifficulty(Difficulty.HARD);
+        world.setDifficulty(Difficulty.PEACEFUL);
         world.setTime(1000L);
         world.setGameRule(GameRules.ADVANCE_TIME, true);
         world.setGameRule(GameRules.BLOCK_DROPS, false);
@@ -569,6 +572,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             restockAllChests();
             break;
         case FREE_FOR_ALL:
+            world.setDifficulty(Difficulty.NORMAL);
             bossBar.name(text("Fight", DARK_RED));
             bossBar.color(BossBar.Color.RED);
             bossBar.progress(1f);
@@ -581,6 +585,8 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             world.setGameRule(GameRules.PVP, true);
             break;
         case COUNTDOWN_SUDDEN_DEATH:
+            world.setDifficulty(Difficulty.PEACEFUL);
+            removeSpawnedMonsters();
             bossBar.name(text("Sudden Death", DARK_RED));
             bossBar.color(BossBar.Color.RED);
             bossBar.progress(1f);
@@ -597,12 +603,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
             }
             world.setGameRule(GameRules.PVP, false);
             world.setTime(0);
-            for (Mob mob : spawnedMonsters) {
-                mob.remove();
-            }
-            spawnedMonsters.clear();
             break;
         case SUDDEN_DEATH:
+            world.setDifficulty(Difficulty.HARD);
             bossBar.name(text("Sudden Death", DARK_RED));
             bossBar.color(BossBar.Color.RED);
             bossBar.progress(0f);
@@ -773,31 +776,46 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         world.getWorldBorder().setCenter(newCenterX, newCenterZ);
         world.getWorldBorder().setSize(newSize);
         world.getWorldBorder().setWarningDistance(16);
+        if (timeLeft <= 0) return State.COUNTDOWN_SUDDEN_DEATH;
+        if (timeLeft == finalPressureTicks) world.setDifficulty(Difficulty.HARD);
         // Time and mob spawning
         if (timeLeft % 10 == 0) {
             bossBar.progress((float) progress);
             if (timeLeft <= finalPressureTicks) {
-                for (Player player : List.copyOf(world.getPlayers())) {
-                    if (getSurvivalPlayer(player).isPlayer()) {
-                        tryToSpawnMob(player);
-                    }
+                final List<Player> contestants = world.getPlayers().stream()
+                    .filter(player -> !player.isDead() && getSurvivalPlayer(player).isPlayer())
+                    .toList();
+                final int limit = Math.min(MAX_ARENA_MONSTERS, contestants.size() * MONSTERS_PER_PLAYER);
+                for (final Player player : contestants) {
+                    if (spawnedMonsters.size() >= limit) break;
+                    tryToSpawnMob(player);
                 }
             }
         }
         if (timeLeft <= finalPressureTicks && world.isDayTime()) {
             world.setTime(world.getTime() + 100L);
         }
-        if (timeLeft <= 0) return State.COUNTDOWN_SUDDEN_DEATH;
         return null;
     }
 
-    private void tryToSpawnMob(Player player) {
-        if (spawnedMonsters.size() > 200) return;
-        Location loc = player.getLocation();
+    private void removeSpawnedMonsters() {
+        for (final Mob mob : spawnedMonsters) mob.remove();
+        spawnedMonsters.clear();
+    }
+
+    private void tryToSpawnMob(final Player player) {
+        final Location playerLocation = player.getLocation();
+        int nearbyMobCount = 0;
+        for (final Mob mob : spawnedMonsters) {
+            if (playerLocation.distanceSquared(mob.getLocation()) <= NEARBY_MONSTER_RADIUS * NEARBY_MONSTER_RADIUS) {
+                nearbyMobCount += 1;
+                if (nearbyMobCount >= MONSTERS_PER_PLAYER) return;
+            }
+        }
         Vector vec = new Vector(random.nextDouble() - 0.5, 0.0, random.nextDouble() - 0.5);
         double distance = 24.0 + random.nextDouble() * 24.0;
         vec = vec.normalize().multiply(distance);
-        loc = loc.add(vec);
+        Location loc = playerLocation.add(vec);
         Block block = loc.getBlock();
         for (int i = 0; i < 16; i += 1) {
             if (!block.isEmpty()) break;
@@ -820,7 +838,6 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
                 return;
             }
         }
-        int nearbyMobCount = 0;
         for (Mob nearby : spawnedMonsters) {
             if (loc.distanceSquared(nearby.getLocation()) < 4.0) {
                 return;
@@ -1713,10 +1730,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
 
     public void stopGame() {
         if (world == null) return;
-        for (Mob mob : spawnedMonsters) {
-            mob.remove();
-        }
-        spawnedMonsters.clear();
+        removeSpawnedMonsters();
         for (Player player : world.getPlayers()) {
             clearTeamColor(player);
             restoreLocator(player);

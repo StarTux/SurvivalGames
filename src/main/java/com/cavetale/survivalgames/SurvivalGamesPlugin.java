@@ -124,6 +124,7 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
     static final long RESTOCK_SECONDS = 100;
     static final long RESTOCK_VARIANCE = 15;
     static final double SUDDEN_DEATH_RADIUS = 32;
+    private static final long BORDER_GRACE_SECONDS = 120L;
     private static final double LOCATOR_RANGE = 64.0;
     private static final int MONSTERS_PER_PLAYER = 4;
     private static final int MAX_ARENA_MONSTERS = 48;
@@ -766,20 +767,24 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         final long finalPressureTicks = 4L * 60 * 20;
         final long seconds = timeLeft / 20;
         secondsLeft = seconds;
-        final double progress = Math.max(0.0, Math.min(1.0, (double) seconds / (double) state.seconds));
-        // Move world border
-        final double sserporg = 1.0 - progress;
-        final double newSize = progress * initialBorderSize + sserporg * SUDDEN_DEATH_RADIUS * 2.0;
-        final Location spawn = world.getSpawnLocation();
-        final double newCenterX = progress * initialBorderCenter.getX() + sserporg * spawn.getX();
-        final double newCenterZ = progress * initialBorderCenter.getZ() + sserporg * spawn.getZ();
-        world.getWorldBorder().setCenter(newCenterX, newCenterZ);
-        world.getWorldBorder().setSize(newSize);
-        world.getWorldBorder().setWarningDistance(16);
+        // Players start exploring at the beginning of the looting phase.
+        final long borderDelayTicks = Math.max(0L, BORDER_GRACE_SECONDS - State.LOOTING.seconds) * 20L;
+        if (ticks == 0) world.getWorldBorder().setWarningDistance(16);
+        if (ticks >= borderDelayTicks && ticks % 20L == 0) {
+            final long shrinkTicks = state.seconds * 20L - borderDelayTicks;
+            final double fraction = Math.min(1.0, (double) (ticks - borderDelayTicks) / shrinkTicks);
+            final Location spawn = world.getSpawnLocation();
+            world.getWorldBorder().setCenter(
+                initialBorderCenter.getX() + fraction * (spawn.getX() - initialBorderCenter.getX()),
+                initialBorderCenter.getZ() + fraction * (spawn.getZ() - initialBorderCenter.getZ())
+            );
+            world.getWorldBorder().setSize(initialBorderSize + fraction * (SUDDEN_DEATH_RADIUS * 2.0 - initialBorderSize));
+        }
         if (timeLeft <= 0) return State.COUNTDOWN_SUDDEN_DEATH;
         if (timeLeft == finalPressureTicks) world.setDifficulty(Difficulty.HARD);
         // Time and mob spawning
         if (timeLeft % 10 == 0) {
+            final double progress = Math.max(0.0, Math.min(1.0, (double) seconds / (double) state.seconds));
             bossBar.progress((float) progress);
             if (timeLeft <= finalPressureTicks) {
                 final List<Player> contestants = world.getPlayers().stream()

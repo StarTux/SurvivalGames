@@ -67,12 +67,12 @@ import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.AbstractSkeleton;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
-import org.bukkit.entity.Skeleton;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -844,9 +844,9 @@ public final class SurvivalGamesPlugin extends JavaPlugin implements Listener {
         EntityType entityType = entityTypes[random.nextInt(entityTypes.length)];
         Mob mob = (Mob) loc.getWorld().spawn(loc, entityType.getEntityClass(), e -> {
                 e.setPersistent(false);
-                if (e instanceof Mob) ((Mob) e).setRemoveWhenFarAway(false);
-                if (e instanceof Zombie) ((Zombie) e).setShouldBurnInDay(false);
-                if (e instanceof Skeleton) ((Skeleton) e).setShouldBurnInDay(false);
+                if (e instanceof Mob m) m.setRemoveWhenFarAway(false);
+                if (e instanceof Zombie zombie) zombie.setShouldBurnInDay(false);
+                if (e instanceof AbstractSkeleton skeleton) skeleton.setShouldBurnInDay(false);
             });
         if (mob == null) return;
         spawnedMonsters.add(mob);
